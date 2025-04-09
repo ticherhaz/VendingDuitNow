@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="colorPrimary">#C63F21</color>
+    <color name="colorPrimaryDark">#f57945</color>
+    <color name="colorAccent">#412B3A</color>
+
+    <color name="colorPrimarySoft">#72C63F21</color>
+
+    <color name="colorFontGeneral">#333333</color>
+    <color name="colorDisable">#A0A0A0</color>
+    <color name="colorLine">#C8C8C8</color>
+    <color name="colorMask">#BF000000</color>
+    <color name="colorRed">#FF0000</color>
+    <color name="colorGreen">#00C850</color>
+    <color name="colorYellow">#FFAB00</color>
+    <color name="colorUnderline">#2196F3</color>
+    <color name="trans80">#CC000000</color>
+
+
+    <color name="colorEventBack">#fffbe0</color>
+    <color name="colorHeaderBack">#e8f3ff</color>
+    <color name="colorChannelBack">#ecffe0</color>
+    <color name="colorBttnBack">#ffffff</color>
+    <color name="colorEscrow">#4ca2ff</color>
+
+    <color name="green">#4CAF50</color>
+    <color name="dark_green">#266129</color>
+
+    <color name="red">#F44336</color>
+    <color name="dark_red">#AF1717</color>
+
+    <color name="blue">#2196F3</color>
+    <color name="dark_blue">#0B61AC</color>
+
+    <color name="light_gray">#D3D3D3</color>
+    <color name="medium_gray">#808080</color>
+    <color name="dark_gray">#696969</color>
+</resources>
