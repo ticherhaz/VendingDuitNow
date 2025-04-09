@@ -27,11 +27,12 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.ticherhaz.vending_duitnow.model.CartListModel
-import net.ticherhaz.vending_duitnow.model.CongifModel
-import net.ticherhaz.vending_duitnow.model.DuitnowModel
-import net.ticherhaz.vending_duitnow.model.TempTrans
-import net.ticherhaz.vending_duitnow.model.UserObj
+import com.linkitsoft.vendingmachine.DBUtils.configdata
+import com.linkitsoft.vendingmachine.Model.CartListModel
+import com.linkitsoft.vendingmachine.Model.CongifModel
+import com.linkitsoft.vendingmachine.Model.DuitnowModel
+import com.linkitsoft.vendingmachine.Model.TempTrans
+import com.linkitsoft.vendingmachine.Model.UserObj
 import org.json.JSONObject
 import org.ksoap2.SoapEnvelope
 import org.ksoap2.serialization.PropertyInfo
@@ -44,6 +45,7 @@ import java.util.Calendar
 import java.util.UUID
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import kotlin.collections.flatMap
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -53,6 +55,7 @@ class DuitNow(
     private val chargingPrice: Double,
     private val userObj: UserObj,
     private val cartListModels: List<CartListModel>,
+    private val configData: configdata,
     private val callback: DuitNowCallback
 ) {
 
@@ -83,7 +86,6 @@ class DuitNow(
 
     private var requestQueue: RequestQueue? = null
     private var customDialog: Dialog? = null
-    private var configData: configdata? = null
     private var congifModel: CongifModel? = null
     private var productsIds = ""
 
@@ -121,7 +123,7 @@ class DuitNow(
 
     private fun setupConfig() {
         configData = weakActivity.get()?.let { configdata(it) }
-        configData?.getAllItems()?.firstOrNull()?.let {
+        configData.getAllItems()?.firstOrNull()?.let {
             congifModel = it
         }
     }
