@@ -384,7 +384,6 @@ class DuitNow(
 
     private suspend fun checkTransactionStatus(traceNo: String): String? {
         return try {
-            val messageHere = "9TfFiAB2OB9MaCp2DtkrlvoigxITDupIgm-JYXYUu9e4AzFuCv3K9g== "
             val response = suspendCoroutine<String> { continuation ->
                 val url = "https://vendingapi.azurewebsites.net/api/ipay88/$traceNo/status"
                 val request = object : StringRequest(
@@ -393,7 +392,7 @@ class DuitNow(
                     { error -> continuation.resumeWithException(error) }
                 ) {
                     override fun getHeaders() = mapOf(
-                        "x-functions-key" to messageHere
+                        "x-functions-key" to X_FUNCTION_KEY
                     )
                 }
                 Volley.newRequestQueue(weakActivity.get()).add(request)
