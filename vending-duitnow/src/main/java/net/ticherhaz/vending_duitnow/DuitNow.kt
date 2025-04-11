@@ -27,7 +27,6 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.ticherhaz.vending_duitnow.model.CartListModel
 import net.ticherhaz.vending_duitnow.model.CongifModel
 import net.ticherhaz.vending_duitnow.model.DuitnowModel
 import net.ticherhaz.vending_duitnow.model.TempTrans
@@ -52,19 +51,28 @@ class DuitNow(
     private val activity: Activity,
     private val chargingPrice: Double,
     private val userObj: UserObj,
-    private val cartListModels: List<CartListModel>,
+    private val productIds: String,
     private var congifModel: CongifModel?,
     private val callback: DuitNowCallback
 ) {
 
     /**
      *
+     * // Get userObjClone
+     * net.ticherhaz.vending_duitnow.model.UserObj userObjClone = new net.ticherhaz.vending_duitnow.model.UserObj();
+     * copyObject(obj, userObjClone);
+     * // Get productIds
+     * final String productIds = CartListModel.getProductIds(cartListModels);
+     * // Get configModelClone
+     * net.ticherhaz.vending_duitnow.model.CongifModel congifModelClone = new
+     *         net.ticherhaz.vending_duitnow.model.CongifModel();
+     * copyObject(dbconfig.getAllItems().get(0), congifModelClone);
      * new net.ticherhaz.vending_duitnow.DuitNow(
      *         TypeProfuctActivity.this,
      *         chargingprice,
-     *         obj,
-     *         cartListModels,
-     *         dbconfig.getAllItems().get(0),
+     *         userObjClone,
+     *         productIds,
+     *         congifModelClone,
      *         new net.ticherhaz.vending_duitnow.DuitNow.DuitNowCallback() {
      *             @Override
      *             public void onFailedLogTempTransaction(@NotNull String message) {
@@ -98,7 +106,6 @@ class DuitNow(
 
     private var requestQueue: RequestQueue? = null
     private var customDialog: Dialog? = null
-    private var productsIds = ""
 
     private val merchantCode get() = congifModel?.merchantcode ?: "M22515"
     private val merchantKey get() = congifModel?.merchantkey ?: "3ENiVsq71P"
@@ -120,16 +127,9 @@ class DuitNow(
     }
 
     init {
-        initializeProducts()
         //setupConfig()
         initShowDialog()
         scope.launch { callRegisterPayment() }
-    }
-
-    private fun initializeProducts() {
-        productsIds = cartListModels.flatMap { model ->
-            List(model.getProdid().toInt()) { model.getProdid() }
-        }.joinToString(",")
     }
 
     /*private fun setupConfig() {
@@ -470,7 +470,7 @@ class DuitNow(
                 transaction.userID = userObj.getUserid()
                 transaction.franID = fid
                 transaction.machineID = mid
-                transaction.productIDs = productsIds
+                transaction.productIDs = productIds
                 transaction.paymentType = userObj.mtd
                 transaction.paymentMethod = userObj.getIpaytype()
                 transaction.paymentStatus = status
