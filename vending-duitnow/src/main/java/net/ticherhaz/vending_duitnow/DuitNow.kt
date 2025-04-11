@@ -27,12 +27,11 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.linkitsoft.vendingmachine.DBUtils.configdata
-import com.linkitsoft.vendingmachine.Model.CartListModel
-import com.linkitsoft.vendingmachine.Model.CongifModel
-import com.linkitsoft.vendingmachine.Model.DuitnowModel
-import com.linkitsoft.vendingmachine.Model.TempTrans
-import com.linkitsoft.vendingmachine.Model.UserObj
+import net.ticherhaz.vending_duitnow.model.CartListModel
+import net.ticherhaz.vending_duitnow.model.CongifModel
+import net.ticherhaz.vending_duitnow.model.DuitnowModel
+import net.ticherhaz.vending_duitnow.model.TempTrans
+import net.ticherhaz.vending_duitnow.model.UserObj
 import org.json.JSONObject
 import org.ksoap2.SoapEnvelope
 import org.ksoap2.serialization.PropertyInfo
@@ -45,7 +44,6 @@ import java.util.Calendar
 import java.util.UUID
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-import kotlin.collections.flatMap
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -55,17 +53,30 @@ class DuitNow(
     private val chargingPrice: Double,
     private val userObj: UserObj,
     private val cartListModels: List<CartListModel>,
-    private val configData: configdata,
+    private var congifModel: CongifModel?,
     private val callback: DuitNowCallback
 ) {
 
     /**
-     * new DuitNow(
+     *
+     * new net.ticherhaz.vending_duitnow.DuitNow(
      *         TypeProfuctActivity.this,
      *         chargingprice,
      *         obj,
      *         cartListModels,
-     *         new DuitNow.DuitNowCallback() {
+     *         dbconfig.getAllItems().get(0),
+     *         new net.ticherhaz.vending_duitnow.DuitNow.DuitNowCallback() {
+     *             @Override
+     *             public void onFailedLogTempTransaction(@NotNull String message) {
+     *                 final SweetAlertDialog sd = new SweetAlertDialog(
+     *                         TypeProfuctActivity.this,
+     *                         SweetAlertDialog.ERROR_TYPE)
+     *                         .setTitleText("TempTran Error")
+     *                         .setContentText(message);
+     *                 sd.setCancelButton(getString(R.string.txt_cancel),
+     *                         SweetAlertDialog::dismissWithAnimation);
+     *                 sd.show();
+     *             }
      *             @Override
      *             public void enableAllUiAtTypeProductActivity() {
      *                 paymentInProgress = false;
@@ -79,6 +90,7 @@ class DuitNow(
      *                 dispensePopUpM5.DispensePopUp(TypeProfuctActivity.this, obj, "success", "", requestQueue);
      *             }
      *         });
+     *
      */
 
     private val weakActivity = WeakReference(activity)
@@ -86,7 +98,6 @@ class DuitNow(
 
     private var requestQueue: RequestQueue? = null
     private var customDialog: Dialog? = null
-    private var congifModel: CongifModel? = null
     private var productsIds = ""
 
     private val merchantCode get() = congifModel?.merchantcode ?: "M22515"
@@ -95,7 +106,7 @@ class DuitNow(
     private val mid get() = congifModel?.mid ?: ""
 
     companion object {
-        private const val TAG = "DuitNowKotlin"
+        private const val TAG = "DuitNow"
 
         private const val BACKEND_URL = "https://vendingapi.azurewebsites.net/api/ipay88/backend"
         private const val SOAP_URL =
@@ -110,7 +121,7 @@ class DuitNow(
 
     init {
         initializeProducts()
-        setupConfig()
+        //setupConfig()
         initShowDialog()
         scope.launch { callRegisterPayment() }
     }
@@ -121,12 +132,12 @@ class DuitNow(
         }.joinToString(",")
     }
 
-    private fun setupConfig() {
-        configData = weakActivity.get()?.let { configdata(it) }
+    /*private fun setupConfig() {
+        configData = weakActivity.get()?.let { configdata(it) }!!
         configData.getAllItems()?.firstOrNull()?.let {
             congifModel = it
         }
-    }
+    }*/
 
     private fun initShowDialog() {
         weakActivity.get()?.let { activity ->
@@ -399,14 +410,15 @@ class DuitNow(
                 }
                 Volley.newRequestQueue(weakActivity.get()).add(request)
             }
-            Log.d("DuitNow", "transaction inquiry response 1-" + traceNo)
+            Log.d(TAG, "transaction inquiry response 1-" + traceNo)
             Log.d(
-                "DuitNow",
+                TAG,
                 "transaction inquiry response 2-" + JSONObject(response).optString("status")
             )
             JSONObject(response).optString("status")
 
         } catch (e: Exception) {
+            Log.e(TAG, "checkTransactionStatus: ", e)
             null
         }
     }
@@ -475,7 +487,10 @@ class DuitNow(
                         "https://vendingappapi.azurewebsites.net/Api/TempTrans",
                         JSONObject(Gson().toJson(transaction)),
                         { response -> continuation.resume(response.toString()) },
-                        { error -> continuation.resumeWithException(error) }
+                        { error ->
+                            continuation.resumeWithException(error)
+                            callback.onFailedLogTempTransaction("Failed Continuation TempTran: " + error.localizedMessage)
+                        }
                     )
                     requestQueue?.add(request) ?: run {
                         Volley.newRequestQueue(weakActivity.get()).add(request)
@@ -484,6 +499,7 @@ class DuitNow(
                 Log.d(TAG, "Transaction logged: $response")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to log transaction", e)
+                callback.onFailedLogTempTransaction("Failed TempTran: " + e.localizedMessage)
             }
         }
     }
@@ -686,5 +702,6 @@ class DuitNow(
     interface DuitNowCallback {
         fun onPrepareStartDispensePopup()
         fun enableAllUiAtTypeProductActivity()
+        fun onFailedLogTempTransaction(message: String)
     }
 }
