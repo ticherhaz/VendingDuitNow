@@ -127,17 +127,9 @@ class DuitNow(
     }
 
     init {
-        //setupConfig()
         initShowDialog()
         scope.launch { callRegisterPayment() }
     }
-
-    /*private fun setupConfig() {
-        configData = weakActivity.get()?.let { configdata(it) }!!
-        configData.getAllItems()?.firstOrNull()?.let {
-            congifModel = it
-        }
-    }*/
 
     private fun initShowDialog() {
         weakActivity.get()?.let { activity ->
@@ -199,7 +191,6 @@ class DuitNow(
 
                 findViewById<Button>(R.id.backbtn).setOnClickListener {
                     dismissDialog()
-                    enableAllUiAtTypeProductActivity()
                     callback.enableAllUiAtTypeProductActivity()
                 }
             }
@@ -236,16 +227,8 @@ class DuitNow(
 
             dismissDialog()
 
-            //enableAllUiAtTypeProductActivity()
             callback.enableAllUiAtTypeProductActivity()
         }
-    }
-
-    private fun enableAllUiAtTypeProductActivity() {
-        /*(activity as TypeProfuctActivity).paymentInProgress = false
-        activity.getpaybuttonenable().isEnabled = true
-        activity.clearCustomDialogDispense()
-        activity.setEnableaddproduct(true)*/
     }
 
     private suspend fun merchantScanDuitNow(traceNo: String): Result<JSONObject> {
@@ -382,7 +365,7 @@ class DuitNow(
     private fun startPaymentStatusCheck(traceNo: String) {
         scope.launch(Dispatchers.IO) {
             repeat(80) { attempt ->
-                delay(1000)
+                delay(3500) // 3.5 sec delay
                 when (checkTransactionStatus(traceNo)) {
                     "1" -> {
                         handlePaymentSuccess(traceNo)
