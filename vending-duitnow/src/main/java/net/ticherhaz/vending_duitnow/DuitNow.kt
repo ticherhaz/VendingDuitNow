@@ -3,6 +3,7 @@ package net.ticherhaz.vending_duitnow
 import android.app.Activity
 import android.app.Dialog
 import android.content.pm.PackageManager
+import android.os.CountDownTimer
 import android.util.Log
 import android.view.View
 import android.view.Window
@@ -55,58 +56,11 @@ class DuitNow(
     private var congifModel: CongifModel?,
     private val callback: DuitNowCallback
 ) {
-
-    /**
-     *
-     * // Get userObjClone
-     * net.ticherhaz.vending_duitnow.model.UserObj userObjClone = new net.ticherhaz.vending_duitnow.model.UserObj();
-     * copyObject(obj, userObjClone);
-     * // Get productIds
-     * final String productIds = CartListModel.getProductIds(cartListModels);
-     * // Get configModelClone
-     * net.ticherhaz.vending_duitnow.model.CongifModel congifModelClone = new
-     *         net.ticherhaz.vending_duitnow.model.CongifModel();
-     * copyObject(dbconfig.getAllItems().get(0), congifModelClone);
-     * new net.ticherhaz.vending_duitnow.DuitNow(
-     *         TypeProfuctActivity.this,
-     *         chargingprice,
-     *         userObjClone,
-     *         productIds,
-     *         congifModelClone,
-     *         new net.ticherhaz.vending_duitnow.DuitNow.DuitNowCallback() {
-     *             @Override
-     *             public void onFailedLogTempTransaction(@NotNull String message) {
-     *                 final SweetAlertDialog sd = new SweetAlertDialog(
-     *                         TypeProfuctActivity.this,
-     *                         SweetAlertDialog.ERROR_TYPE)
-     *                         .setTitleText("TempTran Error")
-     *                         .setContentText(message);
-     *                 sd.setCancelButton(getString(R.string.txt_cancel),
-     *                         SweetAlertDialog::dismissWithAnimation);
-     *                 sd.show();
-     *             }
-     *             @Override
-     *             public void enableAllUiAtTypeProductActivity() {
-     *                 paymentInProgress = false;
-     *                 getpaybuttonenable().setEnabled(true);
-     *                 clearCustomDialogDispense();
-     *                 setEnableaddproduct(true);
-     *             }
-     *             @Override
-     *             public void onPrepareStartDispensePopup() {
-     *                 DispensePopUpM5 dispensePopUpM5 = new DispensePopUpM5();
-     *                 dispensePopUpM5.DispensePopUp(TypeProfuctActivity.this, obj, "success", "", requestQueue);
-     *             }
-     *         });
-     *
-     */
-
     private val weakActivity = WeakReference(activity)
     private val scope = CoroutineScope(Dispatchers.Main + Job())
-
     private var requestQueue: RequestQueue? = null
     private var customDialog: Dialog? = null
-
+    private var countdownTimer: CountDownTimer? = null
     private val merchantCode get() = congifModel?.merchantcode ?: "M22515"
     private val merchantKey get() = congifModel?.merchantkey ?: "3ENiVsq71P"
     private val fid get() = congifModel?.fid ?: ""
@@ -114,7 +68,6 @@ class DuitNow(
 
     companion object {
         private const val TAG = "DuitNow"
-
         private const val BACKEND_URL = "https://vendingapi.azurewebsites.net/api/ipay88/backend"
         private const val SOAP_URL =
             "https://payment.ipay88.com.my/ePayment/WebService/MHGatewayService/GatewayService.svc"
@@ -124,6 +77,7 @@ class DuitNow(
         private const val METHOD_NAME = "EntryPageFunctionality"
         private const val X_FUNCTION_KEY =
             "9TfFiAB2OB9MaCp2DtkrlvoigxITDupIgm-JYXYUu9e4AzFuCv3K9g== "
+        private const val COUNTDOWN_TIME = 60 * 1000L // 60 seconds in milliseconds
     }
 
     init {
@@ -139,9 +93,8 @@ class DuitNow(
                 window?.setBackgroundDrawableResource(android.R.color.transparent)
                 setCancelable(false)
                 setCanceledOnTouchOutside(false)
-
                 findViewById<ProgressBar>(R.id.progress_bar).visibility = View.VISIBLE
-                findViewById<ImageView>(R.id.qr_code).visibility = View.GONE
+                findViewById<ImageView>(R.id.iv_qr_code).visibility = View.GONE
                 show()
             }
         }
@@ -167,7 +120,6 @@ class DuitNow(
                     override fun getBodyContentType() = "application/json; charset=utf-8"
                     override fun getBody() =
                         Gson().toJson(DuitnowModel(traceNo)).toByteArray(Charsets.UTF_8)
-
                     override fun getHeaders() = mapOf(
                         "x-functions-key" to X_FUNCTION_KEY
                     )
@@ -186,16 +138,13 @@ class DuitNow(
     private fun showQrCodeDialog(traceNo: String) {
         weakActivity.get()?.runOnUiThread {
             customDialog?.apply {
-                findViewById<TextView>(R.id.pricetext).text =
+                findViewById<TextView>(R.id.tv_price).text =
                     "TOTAL : RM ${"%.2f".format(chargingPrice)}"
-
-                findViewById<Button>(R.id.backbtn).setOnClickListener {
-                    dismissDialog()
-                    callback.enableAllUiAtTypeProductActivity()
+                findViewById<Button>(R.id.btn_back).setOnClickListener {
+                    handleBackButtonPress()
                 }
             }
         }
-
         scope.launch(Dispatchers.IO) {
             when (val result = merchantScanDuitNow(traceNo)) {
                 is Result.Success -> handleQrCodeResult(result.value, traceNo)
@@ -206,27 +155,26 @@ class DuitNow(
 
     private fun handleQrCodeError(exception: Exception) {
         val title = "QR Failed (Merchant Code: $merchantCode)"
-        val message = "Error: " + exception.message
+        val message = "Error: " + exception.localizedMessage
         showSweetAlertDialog(title, message)
+        callback.onLoggingEverything("ERROR: handleQrCodeError: " + exception.localizedMessage)
     }
 
     private fun handleRegistrationError(exception: Exception) {
         val title = "API Failed (Merchant Code: $merchantCode)"
-        val message = "Error: " + exception.message
+        val message = "Error: " + exception.localizedMessage
         showSweetAlertDialog(title, message)
+        callback.onLoggingEverything("ERROR: handleRegistrationError: " + exception.localizedMessage)
     }
 
     private fun showSweetAlertDialog(title: String, message: String) {
         activity.runOnUiThread {
             val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
-
             sweetAlertDialog.setTitleText(title)
             sweetAlertDialog.setContentText(message)
             sweetAlertDialog.setConfirmButton("Exit") { theDialog -> theDialog?.dismissWithAnimation() }
             sweetAlertDialog.show()
-
             dismissDialog()
-
             callback.enableAllUiAtTypeProductActivity()
         }
     }
@@ -236,9 +184,7 @@ class DuitNow(
             val amountFormatted = "%.2f".format(chargingPrice).replace(".", "")
             val signatureData = listOf(merchantKey, merchantCode, traceNo, amountFormatted, "MYR")
                 .joinToString("")
-
             val signature = securityHmacSha512(signatureData, merchantKey)
-
             val params = listOf(
                 currencyFormat(chargingPrice),
                 "", // BarcodeNo
@@ -246,9 +192,7 @@ class DuitNow(
                 signature,
                 "0"
             )
-
             val soapResponse = callWebServiceDuitNow(params)
-
             Result.Success(handleSoapResponse(soapResponse))
         } catch (e: Exception) {
             Result.Failure(e)
@@ -258,15 +202,12 @@ class DuitNow(
     private suspend fun callWebServiceDuitNow(params: List<String>): SoapObject {
         return withContext(Dispatchers.IO) {
             val soapRequest = createSoapRequest(params)
-
             val envelope = SoapSerializationEnvelope(SoapEnvelope.VER11).apply {
                 implicitTypes = true
                 dotNet = true
                 setOutputSoapObject(soapRequest)
             }
-
             HttpTransportSE(SOAP_URL, 60000).call(SOAP_ACTION, envelope)
-
             envelope.response as SoapObject
         }
     }
@@ -281,8 +222,6 @@ class DuitNow(
     private fun createRequestModel(params: List<String>): SoapObject {
         val namespaceSchemas = "http://schemas.datacontract.org/2004/07/MHPHGatewayService.Model"
         val soapObject = SoapObject(NAMESPACE, "requestModelObj")
-
-        // Helper function to add properties with namespace
         fun addPropertyWithNamespace(name: String, value: Any?, namespace: String) {
             val propertyInfo = PropertyInfo()
             propertyInfo.name = name
@@ -290,7 +229,6 @@ class DuitNow(
             propertyInfo.namespace = namespace
             soapObject.addProperty(propertyInfo)
         }
-
         addPropertyWithNamespace("Amount", params[0], namespaceSchemas)
         addPropertyWithNamespace("BackendURL", BACKEND_URL, namespaceSchemas)
         addPropertyWithNamespace("BarcodeNo", params[1], namespaceSchemas)
@@ -309,7 +247,6 @@ class DuitNow(
         addPropertyWithNamespace("lang", "ISO-8859-1", namespaceSchemas)
         addPropertyWithNamespace("xField1", "", namespaceSchemas)
         addPropertyWithNamespace("xField2", "", namespaceSchemas)
-
         return soapObject
     }
 
@@ -317,7 +254,6 @@ class DuitNow(
         return JSONObject().apply {
             val status = response.getProperty("Status").toString()
             put("Status", status)
-
             if (status == "1") {
                 put("AuthCode", response.getPropertySafe("AuthCode"))
                 put("TransId", response.getPropertySafe("TransId"))
@@ -333,6 +269,7 @@ class DuitNow(
         return try {
             getProperty(name).toString()
         } catch (e: Exception) {
+            callback.onLoggingEverything("ERROR: getPropertySafe: " + e.localizedMessage)
             ""
         }
     }
@@ -343,14 +280,11 @@ class DuitNow(
                 if (result.getString("Status") == "1") {
                     Picasso.get().load(result.getString("QRCode"))
                         .resize(300, 300)
-                        .into(customDialog?.findViewById(R.id.qr_code))
+                        .into(customDialog?.findViewById(R.id.iv_qr_code))
                     showQrCode()
 
-//                    startTransactionInquiry(
-//                        referenceNo = traceNo,
-//                        amount = "%.2f".format(chargingPrice),
-//                        merchantCode = merchantCode
-//                    )
+                    // Start countdown timer
+                    startCountdown()
 
                     startPaymentStatusCheck(traceNo)
                 } else {
@@ -362,16 +296,63 @@ class DuitNow(
         }
     }
 
+    private fun startCountdown() {
+        weakActivity.get()?.runOnUiThread {
+            customDialog?.findViewById<TextView>(R.id.tv_countdown)?.visibility = View.VISIBLE
+            countdownTimer = object : CountDownTimer(COUNTDOWN_TIME, 1000) {
+                override fun onTick(millisUntilFinished: Long) {
+                    val secondsLeft = millisUntilFinished / 1000
+                    customDialog?.findViewById<TextView>(R.id.tv_countdown)?.text =
+                        "$secondsLeft"
+                }
+
+                override fun onFinish() {
+                    showTransactionFailedDialog()
+                }
+            }.start()
+        }
+    }
+
+    private fun showTransactionFailedDialog() {
+        activity.runOnUiThread {
+            val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.ERROR_TYPE)
+            sweetAlertDialog.setTitleText("Transaction Failed")
+            sweetAlertDialog.setContentText("Transaction failed, please try again.")
+            sweetAlertDialog.setConfirmButton("Exit") { theDialog ->
+                theDialog?.dismissWithAnimation()
+                dismissDialog()
+                callback.enableAllUiAtTypeProductActivity()
+            }
+            sweetAlertDialog.show()
+        }
+    }
+
+    private fun handleBackButtonPress() {
+        weakActivity.get()?.let { activity ->
+            val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
+            sweetAlertDialog.setTitleText("Cancel Transaction?")
+            sweetAlertDialog.setContentText("You confirm want to cancel the transaction? If canceled, the product will not fall, and you will not get the product.")
+            sweetAlertDialog.setConfirmButton("Yes") { theDialog ->
+                theDialog?.dismissWithAnimation()
+                dismissDialog()
+                callback.enableAllUiAtTypeProductActivity()
+            }
+            sweetAlertDialog.setCancelButton("No") { theDialog ->
+                theDialog?.dismissWithAnimation()
+            }
+            sweetAlertDialog.show()
+        }
+    }
+
     private fun startPaymentStatusCheck(traceNo: String) {
         scope.launch(Dispatchers.IO) {
             repeat(80) { attempt ->
-                delay(3500) // 3.5 sec delay
+                delay(5000L) // 5 sec delay
                 when (checkTransactionStatus(traceNo)) {
                     "1" -> {
                         handlePaymentSuccess(traceNo)
                         cancel()
                     }
-
                     else -> if (attempt == 79) finalCheck(traceNo)
                 }
             }
@@ -393,15 +374,21 @@ class DuitNow(
                 }
                 Volley.newRequestQueue(weakActivity.get()).add(request)
             }
-            Log.d(TAG, "transaction inquiry response 1-" + traceNo)
+            Log.d(TAG, "transaction inquiry response 1-$traceNo")
             Log.d(
                 TAG,
                 "transaction inquiry response 2-" + JSONObject(response).optString("status")
             )
+            callback.onLoggingEverything("transaction inquiry response 1-$traceNo")
+            callback.onLoggingEverything(
+                "transaction inquiry response 2-" + JSONObject(response).optString(
+                    "status"
+                )
+            )
             JSONObject(response).optString("status")
-
         } catch (e: Exception) {
             Log.e(TAG, "checkTransactionStatus: ", e)
+            callback.onLoggingEverything("ERROR: checkTransactionStatus: " + e.localizedMessage)
             null
         }
     }
@@ -423,24 +410,14 @@ class DuitNow(
                 userObj.mtd = "${userObj.mtd} ($transId) $versionName"
             } catch (e: PackageManager.NameNotFoundException) {
                 Log.e(TAG, "Version name not found", e)
+                callback.onLoggingEverything("ERROR: updateUserTransaction: " + e.localizedMessage)
             }
         }
     }
 
     private fun triggerDispense() {
         weakActivity.get()?.let { activity ->
-
-            // Finalize the dispense process
             callback.onPrepareStartDispensePopup()
-
-            /*val dispensePopUpM5 = DispensePopUpM5()
-            dispensePopUpM5.DispensePopUp(
-                activity,
-                userObj,
-                "success",
-                "",
-                requestQueue ?: Volley.newRequestQueue(activity)
-            )*/
         }
     }
 
@@ -462,8 +439,6 @@ class DuitNow(
                 transaction.promoAmt = userObj.getPromoamt().toString()
                 transaction.vouchers = ""
                 transaction.paymentStatusDes = refCode
-
-
                 val response = suspendCoroutine { continuation ->
                     val request = JsonObjectRequest(
                         Request.Method.POST,
@@ -473,6 +448,7 @@ class DuitNow(
                         { error ->
                             continuation.resumeWithException(error)
                             callback.onFailedLogTempTransaction("Failed Continuation TempTran: " + error.localizedMessage)
+                            callback.onLoggingEverything("Failed Continuation TempTran: " + error.localizedMessage)
                         }
                     )
                     requestQueue?.add(request) ?: run {
@@ -480,7 +456,9 @@ class DuitNow(
                     }
                 }
                 Log.d(TAG, "Transaction logged: $response")
+                callback.onLoggingEverything("Transaction logged: $response")
             } catch (e: Exception) {
+                callback.onLoggingEverything("ERROR: Failed to log transaction: " + e.localizedMessage)
                 Log.e(TAG, "Failed to log transaction", e)
                 callback.onFailedLogTempTransaction("Failed TempTran: " + e.localizedMessage)
             }
@@ -494,6 +472,7 @@ class DuitNow(
     }
 
     private fun dismissDialog() {
+        countdownTimer?.cancel()
         customDialog?.dismiss()
         customDialog = null
         scope.coroutineContext.cancelChildren()
@@ -502,7 +481,7 @@ class DuitNow(
     private fun showQrCode() {
         customDialog?.apply {
             findViewById<ProgressBar>(R.id.progress_bar).visibility = View.GONE
-            findViewById<ImageView>(R.id.qr_code).visibility = View.VISIBLE
+            findViewById<ImageView>(R.id.iv_qr_code).visibility = View.VISIBLE
         }
     }
 
@@ -510,158 +489,12 @@ class DuitNow(
         return DecimalFormat("###,###,##0.00").format(amount)
     }
 
-    var retryCount = 0
-
-    /*private fun startTransactionInquiry(referenceNo: String, amount: String, merchantCode: String) {
-        scope.launch(Dispatchers.IO) {
-            while (retryCount < 6) {
-                try {
-                    val result = executeTransactionInquiry(referenceNo, amount, merchantCode)
-                    when (result.status) {
-                        "1" -> handleTransactionSuccess(result.transId)
-                    }
-                } catch (e: Exception) {
-                    handleTransactionError(e, retryCount, referenceNo, amount, merchantCode)
-                }
-
-                retryCount++
-                delay(10000)
-                if (retryCount < 6) {
-                    startTransactionInquiry(referenceNo, amount, merchantCode)
-                }
-            }
-        }
-    }*/
-
-    private suspend fun executeTransactionInquiry(
-        referenceNo: String,
-        amount: String,
-        merchantCode: String
-    ): TransactionResult {
-        return withContext(Dispatchers.IO) {
-            val envelope = SoapSerializationEnvelope(SoapEnvelope.VER11).apply {
-                setOutputSoapObject(createInquirySoapRequest(referenceNo, amount, merchantCode))
-                dotNet = true
-            }
-
-            val transport = HttpTransportSE(
-                "https://payment.ipay88.com.my/ePayment/Webservice/TxInquiryCardDetails/TxDetailsInquiry.asmx",
-                60000
-            )
-
-            transport.call(
-                "https://www.mobile88.com/epayment/webservice/TxDetailsInquiryCardInfo",
-                envelope
-            )
-
-            val response = envelope.response.toString()
-            Log.d(TAG, "Transaction inquiry response: $response")
-
-            val result = parseXmlTag(response, "TxDetailsInquiryCardInfoResult")
-            val status = parseXmlTag(result, "Status")
-            val transId = parseXmlTag(result, "TransId")
-
-            TransactionResult(status, transId)
-        }
-    }
-
-    private fun createInquirySoapRequest(
-        referenceNo: String,
-        amount: String,
-        merchantCode: String
-    ): SoapObject {
-        return SoapObject(
-            "https://www.mobile88.com/epayment/webservice",
-            "TxDetailsInquiryCardInfo"
-        ).apply {
-            addProperty("MerchantCode", merchantCode)
-            addProperty("ReferenceNo", referenceNo)
-            addProperty("Amount", amount)
-            addProperty("Version", "1.0")
-        }
-    }
-
-    private fun parseXmlTag(xml: String, tag: String): String {
-        val start = xml.indexOf("<$tag>") + tag.length + 2
-        val end = xml.indexOf("</$tag>")
-        return if (start >= 0 && end > start) xml.substring(start, end) else ""
-    }
-
-    private fun handleTransactionSuccess(transId: String) {
-        retryCount == 6
-        scope.launch(Dispatchers.Main) {
-            weakActivity.get()?.let { activity ->
-                try {
-                    // Dismiss dialogs
-                    customDialog?.takeIf { it.isShowing }?.dismiss()
-
-                    // Update user object
-                    val versionName = activity.packageManager
-                        .getPackageInfo(activity.packageName, 0).versionName
-                    userObj.mtd = "${userObj.mtd} ($transId) $versionName"
-
-                    // Show success UI
-                    /*DispensePopUpM5().apply {
-                        DispensePopUp(
-                            activity,
-                            userObj,
-                            "success",
-                            "",
-                            requestQueue ?: Volley.newRequestQueue(activity)
-                        )
-                    }*/
-
-                    // Log transaction
-                    logTempTransaction(1, transId)
-
-                } catch (e: PackageManager.NameNotFoundException) {
-                    Log.e(TAG, "Version name not found", e)
-                }
-            }
-        }
-    }
-
-    private fun handleTransactionFailure(
-        retryCount: Int,
-        referenceNo: String,
-        amount: String,
-        merchantCode: String
-    ) {
-        if (retryCount == 5) {
-            scope.launch {
-                checkTransactionStatus(referenceNo)
-            }
-        }
-    }
-
-    private fun handleTransactionError(
-        e: Exception,
-        retryCount: Int,
-        referenceNo: String,
-        amount: String,
-        merchantCode: String
-    ) {
-        Log.e(TAG, "Transaction inquiry failed", e)
-        if (retryCount == 5) {
-            scope.launch {
-                checkTransactionStatus(referenceNo)
-            }
-        }
-    }
-
     private fun securityHmacSha512(toEncrypt: String, key: String): String {
-        // Convert key to byte array
         val keyBytes = key.toByteArray(charset("UTF-8"))
-
-        // Create an instance of HMACSHA512 with the key
         val hmacSHA512 = Mac.getInstance("HmacSHA512")
         val secretKeySpec = SecretKeySpec(keyBytes, "HmacSHA512")
         hmacSHA512.init(secretKeySpec)
-
-        // Compute the hash
         val hashBytes = hmacSHA512.doFinal(toEncrypt.toByteArray(charset("UTF-8")))
-
-        // Convert the byte array to a hexadecimal string
         return byteArrayToHex(hashBytes)
     }
 
@@ -675,8 +508,6 @@ class DuitNow(
         return hexString.toString()
     }
 
-    private data class TransactionResult(val status: String, val transId: String)
-
     sealed class Result<out T> {
         data class Success<out T>(val value: T) : Result<T>()
         data class Failure(val exception: Exception) : Result<Nothing>()
@@ -686,5 +517,6 @@ class DuitNow(
         fun onPrepareStartDispensePopup()
         fun enableAllUiAtTypeProductActivity()
         fun onFailedLogTempTransaction(message: String)
+        fun onLoggingEverything(message: String)
     }
 }

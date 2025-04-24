@@ -57,7 +57,6 @@
                     android:orientation="vertical">
 
                     <TextView
-                        android:id="@+id/scantext"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="50dp"
@@ -74,7 +73,8 @@
                         android:layout_height="100dp"
                         android:layout_gravity="center"
                         android:layout_marginTop="24dp"
-                        android:background="@drawable/duitnow" />
+                        android:background="@drawable/duitnow"
+                        android:contentDescription="@string/app_name" />
 
                     <LinearLayout
                         android:layout_width="300dp"
@@ -86,9 +86,10 @@
                         android:orientation="vertical">
 
                         <ImageView
-                            android:id="@+id/qr_code"
+                            android:id="@+id/iv_qr_code"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
+                            android:contentDescription="@string/app_name"
                             android:visibility="gone" />
 
                         <ProgressBar
@@ -107,7 +108,7 @@
                     android:background="@drawable/bottom_curve">
 
                     <Button
-                        android:id="@+id/backbtn"
+                        android:id="@+id/btn_back"
                         style="@style/Widget.AppCompat.Button.Borderless"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -124,10 +125,25 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/pricetext" />
+                        app:layout_constraintTop_toBottomOf="@+id/tv_price" />
 
                     <TextView
-                        android:id="@+id/pricetext"
+                        android:id="@+id/tv_countdown"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="16dp"
+                        android:background="@drawable/circle_background"
+                        android:gravity="center"
+                        android:text="60"
+                        android:textColor="@color/white"
+                        android:textSize="36sp"
+                        app:layout_constraintBottom_toBottomOf="@id/btn_back"
+                        app:layout_constraintLeft_toRightOf="@+id/btn_back"
+                        app:layout_constraintTop_toTopOf="@+id/btn_back" />
+
+
+                    <TextView
+                        android:id="@+id/tv_price"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="32dp"
@@ -135,11 +151,10 @@
                         android:layout_marginEnd="32dp"
                         android:layout_marginBottom="16dp"
                         android:gravity="center"
-                        android:inputType="textMultiLine"
                         android:text="TOTAL : RM 0.00"
                         android:textColor="#fff"
                         android:textSize="50sp"
-                        app:layout_constraintBottom_toTopOf="@+id/backbtn"
+                        app:layout_constraintBottom_toTopOf="@+id/btn_back"
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent" />

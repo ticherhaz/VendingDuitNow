@@ -45,8 +45,8 @@ dependencies {
 
     implementation(libs.ksoap)
     implementation ("com.android.volley:volley:1.2.1")
-    implementation ("com.squareup.picasso:picasso:2.8")
-    implementation ("com.google.code.gson:gson:2.12.1")
+    implementation ("com.squareup.picasso:picasso:2.71828")
+    implementation ("com.google.code.gson:gson:2.13.1")
 
     implementation ("com.github.f0ris.sweetalert:library:1.6.2")
     implementation ("com.github.ticherhaz:ComplexView:1.5.3")
