@@ -315,9 +315,10 @@ class DuitNow(
 
     private fun showTransactionFailedDialog() {
         activity.runOnUiThread {
-            val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.ERROR_TYPE)
+            val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
             sweetAlertDialog.setTitleText("Transaction Failed")
             sweetAlertDialog.setContentText("Transaction failed, please try again.")
+            sweetAlertDialog.setCancelable(false)
             sweetAlertDialog.setConfirmButton("Exit") { theDialog ->
                 theDialog?.dismissWithAnimation()
                 dismissDialog()
@@ -332,6 +333,7 @@ class DuitNow(
             val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
             sweetAlertDialog.setTitleText("Cancel Transaction?")
             sweetAlertDialog.setContentText("You confirm want to cancel the transaction? If canceled, the product will not fall, and you will not get the product.")
+            sweetAlertDialog.setCancelable(false)
             sweetAlertDialog.setConfirmButton("Yes") { theDialog ->
                 theDialog?.dismissWithAnimation()
                 dismissDialog()
