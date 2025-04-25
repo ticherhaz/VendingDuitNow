@@ -120,6 +120,7 @@ class DuitNow(
                     override fun getBodyContentType() = "application/json; charset=utf-8"
                     override fun getBody() =
                         Gson().toJson(DuitnowModel(traceNo)).toByteArray(Charsets.UTF_8)
+
                     override fun getHeaders() = mapOf(
                         "x-functions-key" to X_FUNCTION_KEY
                     )
@@ -348,14 +349,18 @@ class DuitNow(
 
     private fun startPaymentStatusCheck(traceNo: String) {
         scope.launch(Dispatchers.IO) {
-            repeat(80) { attempt ->
-                delay(5000L) // 5 sec delay
+            repeat(30) { attempt ->
+                delay(2000L) // 2 sec delay
                 when (checkTransactionStatus(traceNo)) {
                     "1" -> {
                         handlePaymentSuccess(traceNo)
                         cancel()
                     }
-                    else -> if (attempt == 79) finalCheck(traceNo)
+
+                    else -> {
+                        logTempTransaction(0, traceNo)
+                        if (attempt == 29) finalCheck(traceNo)
+                    }
                 }
             }
         }
