@@ -308,6 +308,7 @@ class DuitNow(
                 }
 
                 override fun onFinish() {
+                    logTempTransaction(0, "Transaction failed, exceed 60 seconds")
                     showTransactionFailedDialog()
                 }
             }.start()
