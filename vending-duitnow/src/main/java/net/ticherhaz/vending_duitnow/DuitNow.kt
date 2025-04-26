@@ -338,6 +338,7 @@ class DuitNow(
             sweetAlertDialog.setConfirmButton("Yes") { theDialog ->
                 theDialog?.dismissWithAnimation()
                 dismissDialog()
+                logTempTransaction(0, "Customer cancel the transaction")
                 callback.enableAllUiAtTypeProductActivity()
             }
             sweetAlertDialog.setCancelButton("No") { theDialog ->
@@ -350,7 +351,7 @@ class DuitNow(
     private fun startPaymentStatusCheck(traceNo: String) {
         scope.launch(Dispatchers.IO) {
             repeat(30) { attempt ->
-                delay(2000L) // 2 sec delay
+                delay(5000L) // 5 sec delay
                 when (checkTransactionStatus(traceNo)) {
                     "1" -> {
                         handlePaymentSuccess(traceNo)
@@ -358,7 +359,6 @@ class DuitNow(
                     }
 
                     else -> {
-                        logTempTransaction(0, traceNo)
                         if (attempt == 29) finalCheck(traceNo)
                     }
                 }
