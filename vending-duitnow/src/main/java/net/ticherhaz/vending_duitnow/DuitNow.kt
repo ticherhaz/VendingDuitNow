@@ -95,7 +95,9 @@ class DuitNow(
                 setCanceledOnTouchOutside(false)
                 findViewById<ProgressBar>(R.id.progress_bar).visibility = View.VISIBLE
                 findViewById<ImageView>(R.id.iv_qr_code).visibility = View.GONE
-                show()
+                if (!isShowing) {
+                    show()
+                }
             }
         }
     }
@@ -142,12 +144,8 @@ class DuitNow(
                 findViewById<TextView>(R.id.tv_price).text =
                     "TOTAL : RM ${"%.2f".format(chargingPrice)}"
 
-
                 findViewById<Button>(R.id.btn_cancel).setOnClickListener {
                     handleBackButtonPress()
-                }
-                findViewById<Button>(R.id.btn_payment_made).setOnClickListener {
-                    handlePaymentMadeButtonPress(traceNo)
                 }
 
             }
@@ -156,21 +154,6 @@ class DuitNow(
             when (val result = merchantScanDuitNow(traceNo)) {
                 is Result.Success -> handleQrCodeResult(result.value, traceNo)
                 is Result.Failure -> handleQrCodeError(result.exception)
-            }
-        }
-    }
-
-    private fun handlePaymentMadeButtonPress(traceNo: String) {
-        scope.launch(Dispatchers.IO) {
-            when (checkTransactionStatus(traceNo)) {
-                "1" -> {
-                    handlePaymentSuccess(traceNo)
-                    cancel()
-                }
-
-                else -> {
-                    logTempTransaction(0, "User pressed the button payment made but transaction status still failed")
-                }
             }
         }
     }
@@ -192,11 +175,16 @@ class DuitNow(
     private fun showSweetAlertDialog(title: String, message: String) {
         activity.runOnUiThread {
             val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
-            sweetAlertDialog.setTitleText(title)
-            sweetAlertDialog.setContentText(message)
-            sweetAlertDialog.setConfirmButton("Exit") { theDialog -> theDialog?.dismissWithAnimation() }
-            sweetAlertDialog.show()
-            dismissDialog()
+            sweetAlertDialog.apply {
+                setTitleText(title)
+                setContentText(message)
+                setConfirmButton("Exit") { theDialog -> theDialog?.dismissWithAnimation() }
+                if (!isShowing) {
+                    show()
+                }
+            }
+
+            dismissDialogDuitNow()
             callback.enableAllUiAtTypeProductActivity()
         }
     }
@@ -339,34 +327,44 @@ class DuitNow(
     private fun showTransactionFailedDialog() {
         activity.runOnUiThread {
             val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
-            sweetAlertDialog.setTitleText("Transaction Failed")
-            sweetAlertDialog.setContentText("Transaction failed, please try again.")
-            sweetAlertDialog.setCancelable(false)
-            sweetAlertDialog.setConfirmButton("Exit") { theDialog ->
-                theDialog?.dismissWithAnimation()
-                dismissDialog()
-                callback.enableAllUiAtTypeProductActivity()
+            sweetAlertDialog.apply {
+                setTitleText("Transaction Failed")
+                setContentText("Transaction failed, please try again.")
+                setCancelable(false)
+                setConfirmButton("Exit") { theDialog ->
+                    theDialog?.dismissWithAnimation()
+                    dismissDialogDuitNow()
+                    callback.enableAllUiAtTypeProductActivity()
+                }
+                if (!isShowing) {
+                    show()
+                }
             }
-            sweetAlertDialog.show()
+
         }
     }
 
     private fun handleBackButtonPress() {
         weakActivity.get()?.let { activity ->
             val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
-            sweetAlertDialog.setTitleText("Cancel Transaction?")
-            sweetAlertDialog.setContentText("You confirm want to cancel the transaction? If canceled, the product will not fall, and you will not get the product.")
-            sweetAlertDialog.setCancelable(false)
-            sweetAlertDialog.setConfirmButton("Yes") { theDialog ->
-                theDialog?.dismissWithAnimation()
-                dismissDialog()
-                logTempTransaction(0, "Customer cancel the transaction")
-                callback.enableAllUiAtTypeProductActivity()
+            sweetAlertDialog.apply {
+                setTitleText("Cancel Transaction?")
+                setContentText("You confirm want to cancel the transaction? If canceled, the product will not fall, and you will not get the product.")
+                setCancelable(false)
+                setConfirmButton("Yes") { theDialog ->
+                    theDialog?.dismissWithAnimation()
+                    dismissDialogDuitNow()
+                    logTempTransaction(0, "Customer cancel the transaction")
+                    callback.enableAllUiAtTypeProductActivity()
+                }
+                setCancelButton("No") { theDialog ->
+                    theDialog?.dismissWithAnimation()
+                }
+
+                if (!isShowing) {
+                    show()
+                }
             }
-            sweetAlertDialog.setCancelButton("No") { theDialog ->
-                theDialog?.dismissWithAnimation()
-            }
-            sweetAlertDialog.show()
         }
     }
 
@@ -511,7 +509,10 @@ class DuitNow(
         }
     }
 
-    private fun dismissDialog() {
+    /**
+     * Call this at onDestroy()
+     */
+    fun dismissDialogDuitNow() {
         countdownTimer?.cancel()
         customDialog?.dismiss()
         customDialog = null

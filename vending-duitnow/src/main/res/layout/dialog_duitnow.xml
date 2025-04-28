@@ -110,25 +110,6 @@
                     android:paddingBottom="24dp">
 
                     <Button
-                        android:id="@+id/btn_payment_made"
-                        style="@style/Widget.AppCompat.Button.Borderless"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:background="@drawable/btn_background_rounded_green"
-                        android:paddingStart="80dp"
-                        android:paddingTop="15dp"
-                        android:paddingEnd="80dp"
-                        android:paddingBottom="15dp"
-                        android:text="Payment Already Made"
-                        android:textAllCaps="false"
-                        android:textColor="@color/white"
-                        android:textSize="36sp"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/tv_price" />
-
-                    <Button
                         android:id="@+id/btn_cancel"
                         style="@style/Widget.AppCompat.Button.Borderless"
                         android:layout_width="wrap_content"
@@ -145,7 +126,7 @@
                         android:textSize="36sp"
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/btn_payment_made" />
+                        app:layout_constraintTop_toBottomOf="@+id/tv_price" />
 
                     <TextView
                         android:id="@+id/tv_countdown"
