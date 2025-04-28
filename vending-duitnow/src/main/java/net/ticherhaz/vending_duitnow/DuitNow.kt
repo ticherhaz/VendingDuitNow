@@ -141,15 +141,36 @@ class DuitNow(
             customDialog?.apply {
                 findViewById<TextView>(R.id.tv_price).text =
                     "TOTAL : RM ${"%.2f".format(chargingPrice)}"
-                findViewById<Button>(R.id.btn_back).setOnClickListener {
+
+
+                findViewById<Button>(R.id.btn_cancel).setOnClickListener {
                     handleBackButtonPress()
                 }
+                findViewById<Button>(R.id.btn_payment_made).setOnClickListener {
+                    handlePaymentMadeButtonPress(traceNo)
+                }
+
             }
         }
         scope.launch(Dispatchers.IO) {
             when (val result = merchantScanDuitNow(traceNo)) {
                 is Result.Success -> handleQrCodeResult(result.value, traceNo)
                 is Result.Failure -> handleQrCodeError(result.exception)
+            }
+        }
+    }
+
+    private fun handlePaymentMadeButtonPress(traceNo: String) {
+        scope.launch(Dispatchers.IO) {
+            when (checkTransactionStatus(traceNo)) {
+                "1" -> {
+                    handlePaymentSuccess(traceNo)
+                    cancel()
+                }
+
+                else -> {
+                    logTempTransaction(0, "User pressed the button payment made but transaction status still failed")
+                }
             }
         }
     }
@@ -352,7 +373,8 @@ class DuitNow(
     private fun startPaymentStatusCheck(traceNo: String) {
         scope.launch(Dispatchers.IO) {
             repeat(30) { attempt ->
-                delay(5000L) // 5 sec delay
+                delay(3500L) // 3.5 sec delay
+
                 when (checkTransactionStatus(traceNo)) {
                     "1" -> {
                         handlePaymentSuccess(traceNo)
@@ -360,7 +382,23 @@ class DuitNow(
                     }
 
                     else -> {
-                        if (attempt == 29) finalCheck(traceNo)
+                        if (attempt == 29) {
+
+                            // Do last checking
+                            when (checkTransactionStatus(traceNo)) {
+                                "1" -> {
+                                    handlePaymentSuccess(traceNo)
+                                    cancel()
+                                }
+
+                                else -> {
+                                    logTempTransaction(0, "Transaction failed, exceed 60 seconds")
+                                }
+                            }
+
+
+                        }
+
                     }
                 }
             }
@@ -470,12 +508,6 @@ class DuitNow(
                 Log.e(TAG, "Failed to log transaction", e)
                 callback.onFailedLogTempTransaction("Failed TempTran: " + e.localizedMessage)
             }
-        }
-    }
-
-    private fun finalCheck(traceNo: String) {
-        scope.launch {
-            checkTransactionStatus(traceNo)
         }
     }
 

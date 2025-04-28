@@ -3,4 +3,5 @@
     <string name="back">Back</string>
     <string name="proceed_with_duitnow_pay">Proceed with DuitNow Pay</string>
     <string name="kindly_scan_the_qr_code_displayed_using_your_preferred_duitnow_app">Kindly scan the QR code displayed using your preferred DuitNow app</string>
+    <string name="cancel">Cancel</string>
 </resources>
