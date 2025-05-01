@@ -54,6 +54,13 @@ class DuitNow(
     private val userObj: UserObj,
     private val productIds: String,
     private var congifModel: CongifModel?,
+    private val title: String,  //"Proceed with DuitNow Pay"
+    private val description: String,  //"Kindly scan the QR code displayed using your preferred DuitNow app"
+    private val total: String,  //"TOTAL"
+    private val titleTransactionCancel: String,  // "Cancel Transaction?"
+    private val descriptionTransactionCancel: String,  // "You confirm want to cancel the transaction? If canceled, the product will not fall, and you will not get the product."
+    private val titleTransactionFailed: String,  // "Transaction Failed"
+    private val descriptionTransactionFailed: String,  // "The transaction failed, please try again."
     private val callback: DuitNowCallback
 ) {
     private val weakActivity = WeakReference(activity)
@@ -77,7 +84,7 @@ class DuitNow(
         private const val METHOD_NAME = "EntryPageFunctionality"
         private const val X_FUNCTION_KEY =
             "9TfFiAB2OB9MaCp2DtkrlvoigxITDupIgm-JYXYUu9e4AzFuCv3K9g== "
-        private const val COUNTDOWN_TIME = 60 * 1000L // 60 seconds in milliseconds
+        private const val COUNTDOWN_TIME = 90 * 1000L // 90 seconds in milliseconds
     }
 
     init {
@@ -95,6 +102,11 @@ class DuitNow(
                 setCanceledOnTouchOutside(false)
                 findViewById<ProgressBar>(R.id.progress_bar).visibility = View.VISIBLE
                 findViewById<ImageView>(R.id.iv_qr_code).visibility = View.GONE
+
+                findViewById<TextView>(R.id.tv_title).text = title
+                findViewById<TextView>(R.id.tv_description).text = description
+
+
                 if (!isShowing) {
                     show()
                 }
@@ -141,10 +153,10 @@ class DuitNow(
     private fun showQrCodeDialog(traceNo: String) {
         weakActivity.get()?.runOnUiThread {
             customDialog?.apply {
-                findViewById<TextView>(R.id.tv_price).text =
-                    "TOTAL : RM ${"%.2f".format(chargingPrice)}"
+                val priceMessage = total + " : RM ${"%.2f".format(chargingPrice)}"
+                findViewById<TextView>(R.id.tv_price).text = priceMessage
 
-                findViewById<Button>(R.id.btn_cancel).setOnClickListener {
+                findViewById<Button>(R.id.iv_cancel).setOnClickListener {
                     handleBackButtonPress()
                 }
 
@@ -312,12 +324,13 @@ class DuitNow(
             countdownTimer = object : CountDownTimer(COUNTDOWN_TIME, 1000) {
                 override fun onTick(millisUntilFinished: Long) {
                     val secondsLeft = millisUntilFinished / 1000
-                    customDialog?.findViewById<TextView>(R.id.tv_countdown)?.text =
-                        "$secondsLeft"
+
+                    val countDownMessage = "Processing in ($secondsLeft sec)"
+                    customDialog?.findViewById<TextView>(R.id.tv_countdown)?.text = countDownMessage
                 }
 
                 override fun onFinish() {
-                    logTempTransaction(0, "Transaction failed, exceed 60 seconds")
+                    logTempTransaction(0, "Transaction failed, exceed 90 seconds")
                     showTransactionFailedDialog()
                 }
             }.start()
@@ -328,8 +341,8 @@ class DuitNow(
         activity.runOnUiThread {
             val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
             sweetAlertDialog.apply {
-                setTitleText("Transaction Failed")
-                setContentText("Transaction failed, please try again.")
+                setTitleText(titleTransactionFailed)
+                setContentText(descriptionTransactionFailed)
                 setCancelable(false)
                 setConfirmButton("Exit") { theDialog ->
                     theDialog?.dismissWithAnimation()
@@ -348,8 +361,8 @@ class DuitNow(
         weakActivity.get()?.let { activity ->
             val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
             sweetAlertDialog.apply {
-                setTitleText("Cancel Transaction?")
-                setContentText("You confirm want to cancel the transaction? If canceled, the product will not fall, and you will not get the product.")
+                setTitleText(titleTransactionCancel)
+                setContentText(descriptionTransactionCancel)
                 setCancelable(false)
                 setConfirmButton("Yes") { theDialog ->
                     theDialog?.dismissWithAnimation()

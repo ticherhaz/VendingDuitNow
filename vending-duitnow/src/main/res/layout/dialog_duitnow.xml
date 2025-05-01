@@ -18,10 +18,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="8dp"
-            android:elevation="8dp"
+            android:elevation="4dp"
             app:cardCornerRadius="@dimen/layout_corner_radius"
-            app:cardElevation="8dp"
-            app:cardMaxElevation="16dp">
+            app:cardElevation="4dp"
+            app:cardMaxElevation="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -35,7 +35,7 @@
                     android:background="@drawable/header_curve">
 
                     <TextView
-                        android:id="@+id/mtd"
+                        android:id="@+id/tv_title"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="32dp"
@@ -57,6 +57,7 @@
                     android:orientation="vertical">
 
                     <TextView
+                        android:id="@+id/tv_description"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="50dp"
@@ -109,39 +110,30 @@
                     android:paddingTop="4dp"
                     android:paddingBottom="24dp">
 
-                    <Button
-                        android:id="@+id/btn_cancel"
-                        style="@style/Widget.AppCompat.Button.Borderless"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:background="@drawable/btn_background_rounded_red"
-                        android:paddingStart="80dp"
-                        android:paddingTop="15dp"
-                        android:paddingEnd="80dp"
-                        android:paddingBottom="15dp"
-                        android:text="@string/cancel"
-                        android:textAllCaps="false"
-                        android:textColor="@color/white"
-                        android:textSize="36sp"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/tv_price" />
-
                     <TextView
                         android:id="@+id/tv_countdown"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginLeft="16dp"
-                        android:background="@drawable/circle_background"
+                        android:layout_marginTop="16dp"
                         android:gravity="center"
-                        android:text="60"
+                        android:text="Processing in (90 sec)"
                         android:textColor="@color/white"
-                        android:textSize="36sp"
-                        app:layout_constraintBottom_toBottomOf="@id/btn_cancel"
-                        app:layout_constraintLeft_toRightOf="@+id/btn_cancel"
-                        app:layout_constraintTop_toTopOf="@+id/btn_cancel" />
+                        android:textSize="30sp"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/tv_price" />
 
+                    <ImageView
+                        android:id="@+id/iv_cancel"
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:layout_marginStart="32dp"
+                        android:background="@drawable/circle_background"
+                        android:contentDescription="@string/cancel"
+                        android:src="@android:drawable/ic_delete"
+                        app:layout_constraintBottom_toBottomOf="@id/tv_countdown"
+                        app:layout_constraintLeft_toRightOf="@+id/tv_countdown"
+                        app:layout_constraintTop_toTopOf="@+id/tv_countdown" />
 
                     <TextView
                         android:id="@+id/tv_price"
