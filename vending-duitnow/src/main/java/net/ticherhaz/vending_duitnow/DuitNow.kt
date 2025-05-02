@@ -98,8 +98,10 @@ class DuitNow(
                 requestWindowFeature(Window.FEATURE_NO_TITLE)
                 setContentView(R.layout.dialog_duitnow)
                 window?.setBackgroundDrawableResource(android.R.color.transparent)
+
                 setCancelable(false)
                 setCanceledOnTouchOutside(false)
+
                 findViewById<ProgressBar>(R.id.progress_bar).visibility = View.VISIBLE
                 findViewById<ImageView>(R.id.iv_qr_code).visibility = View.GONE
 
@@ -156,8 +158,8 @@ class DuitNow(
                 val priceMessage = total + " : RM ${"%.2f".format(chargingPrice)}"
                 findViewById<TextView>(R.id.tv_price).text = priceMessage
 
-                findViewById<Button>(R.id.iv_cancel).setOnClickListener {
-                    handleBackButtonPress()
+                findViewById<ImageView>(R.id.iv_cancel).setOnClickListener {
+                    handleImageViewCancelPressed()
                 }
 
             }
@@ -357,7 +359,7 @@ class DuitNow(
         }
     }
 
-    private fun handleBackButtonPress() {
+    private fun handleImageViewCancelPressed() {
         weakActivity.get()?.let { activity ->
             val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
             sweetAlertDialog.apply {
@@ -383,8 +385,8 @@ class DuitNow(
 
     private fun startPaymentStatusCheck(traceNo: String) {
         scope.launch(Dispatchers.IO) {
-            repeat(30) { attempt ->
-                delay(3500L) // 3.5 sec delay
+            repeat(45) { attempt ->  // 45 * 2 seconds = 90 seconds
+                delay(2000L) // 2 sec delay
 
                 when (checkTransactionStatus(traceNo)) {
                     "1" -> {
@@ -393,7 +395,7 @@ class DuitNow(
                     }
 
                     else -> {
-                        if (attempt == 29) {
+                        if (attempt == 44) {
 
                             // Do last checking
                             when (checkTransactionStatus(traceNo)) {
@@ -406,10 +408,7 @@ class DuitNow(
                                     logTempTransaction(0, "Transaction failed, exceed 60 seconds")
                                 }
                             }
-
-
                         }
-
                     }
                 }
             }
