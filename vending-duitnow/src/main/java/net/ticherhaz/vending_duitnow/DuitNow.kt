@@ -19,12 +19,15 @@ import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
 import com.google.gson.Gson
 import com.squareup.picasso.Picasso
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.ticherhaz.vending_duitnow.model.CongifModel
@@ -53,17 +56,22 @@ class DuitNow(
     private val userObj: UserObj,
     private val productIds: String,
     private var congifModel: CongifModel?,
-    private val title: String,  //"Proceed with DuitNow Pay"
-    private val description: String,  //"Kindly scan the QR code displayed using your preferred DuitNow app"
-    private val total: String,  //"TOTAL"
-    private val titleTransactionCancel: String,  // "Cancel Transaction?"
-    private val descriptionTransactionCancel: String,  // "You confirm want to cancel the transaction? If canceled, the product will not fall, and you will not get the product."
-    private val titleTransactionFailed: String,  // "Transaction Failed"
-    private val descriptionTransactionFailed: String,  // "The transaction failed, please try again."
+    private val title: String,
+    private val description: String,
+    private val total: String,
+    private val titleTransactionCancel: String,
+    private val descriptionTransactionCancel: String,
+    private val titleTransactionFailed: String,
+    private val descriptionTransactionFailed: String,
     private val callback: DuitNowCallback
 ) {
     private val weakActivity = WeakReference(activity)
-    private val scope = CoroutineScope(Dispatchers.Main + Job())
+    private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
+        activity.runOnUiThread {
+            showErrorDialog("Coroutine Error", exception.localizedMessage ?: "Unknown error")
+        }
+    }
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob() + exceptionHandler)
     private var requestQueue: RequestQueue? = null
     private var customDialog: Dialog? = null
     private var countdownTimer: CountDownTimer? = null
@@ -73,6 +81,7 @@ class DuitNow(
     private val mid get() = congifModel?.mid ?: ""
 
     private var paymentAlreadyMadeAndSuccess = false
+    private var paymentCheckJob: Job? = null
 
     companion object {
         private const val TAG = "DuitNow"
@@ -86,6 +95,8 @@ class DuitNow(
         private const val X_FUNCTION_KEY =
             "9TfFiAB2OB9MaCp2DtkrlvoigxITDupIgm-JYXYUu9e4AzFuCv3K9g== "
         private const val COUNTDOWN_TIME = 90 * 1000L // 90 seconds in milliseconds
+        private const val PAYMENT_CHECK_INTERVAL = 2000L // 2 seconds
+        private const val MAX_PAYMENT_CHECKS = 45 // 45 * 2 seconds = 90 seconds
     }
 
     init {
@@ -109,7 +120,6 @@ class DuitNow(
                 findViewById<TextView>(R.id.tv_title).text = title
                 findViewById<TextView>(R.id.tv_description).text = description
 
-
                 if (!isShowing) {
                     show()
                 }
@@ -118,34 +128,42 @@ class DuitNow(
     }
 
     private suspend fun callRegisterPayment() {
-        val traceNo = UUID.randomUUID().toString().uppercase()
-        when (val result = makeRegistrationRequest(traceNo)) {
-            is Result.Success -> showQrCodeDialog(traceNo)
-            is Result.Failure -> handleRegistrationError(result.exception)
+        try {
+            val traceNo = UUID.randomUUID().toString().uppercase()
+            when (val result = makeRegistrationRequest(traceNo)) {
+                is Result.Success -> showQrCodeDialog(traceNo)
+                is Result.Failure -> handleRegistrationError(result.exception)
+            }
+        } catch (e: CancellationException) {
+            Log.d(TAG, "Registration coroutine cancelled", e)
+        } catch (e: Exception) {
+            handleRegistrationError(e)
         }
     }
 
     private suspend fun makeRegistrationRequest(traceNo: String): Result<String> {
         return try {
-            val response = suspendCoroutine<String> { continuation ->
-                val url = "https://vendingapi.azurewebsites.net/api/ipay88/register"
-                val request = object : StringRequest(
-                    Method.POST, url,
-                    { response -> continuation.resume(response) },
-                    { error -> continuation.resumeWithException(error) }
-                ) {
-                    override fun getBodyContentType() = "application/json; charset=utf-8"
-                    override fun getBody() =
-                        Gson().toJson(DuitnowModel(traceNo)).toByteArray(Charsets.UTF_8)
+            val response = withContext(Dispatchers.IO) {
+                suspendCoroutine<String> { continuation ->
+                    val url = "https://vendingapi.azurewebsites.net/api/ipay88/register"
+                    val request = object : StringRequest(
+                        Method.POST, url,
+                        { response -> continuation.resume(response) },
+                        { error -> continuation.resumeWithException(error) }
+                    ) {
+                        override fun getBodyContentType() = "application/json; charset=utf-8"
+                        override fun getBody() =
+                            Gson().toJson(DuitnowModel(traceNo)).toByteArray(Charsets.UTF_8)
 
-                    override fun getHeaders() = mapOf(
-                        "x-functions-key" to X_FUNCTION_KEY
-                    )
-                }.apply {
-                    retryPolicy =
-                        DefaultRetryPolicy(20000, 0, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT)
+                        override fun getHeaders() = mapOf(
+                            "x-functions-key" to X_FUNCTION_KEY
+                        )
+                    }.apply {
+                        retryPolicy =
+                            DefaultRetryPolicy(20000, 0, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT)
+                    }
+                    Volley.newRequestQueue(weakActivity.get()).add(request)
                 }
-                Volley.newRequestQueue(weakActivity.get()).add(request)
             }
             Result.Success(response)
         } catch (e: Exception) {
@@ -155,52 +173,73 @@ class DuitNow(
 
     private fun showQrCodeDialog(traceNo: String) {
         weakActivity.get()?.runOnUiThread {
-            customDialog?.apply {
-                val priceMessage = total + " : RM ${"%.2f".format(chargingPrice)}"
-                findViewById<TextView>(R.id.tv_price).text = priceMessage
+            if (scope.isActive && customDialog?.isShowing == true) {
+                customDialog?.apply {
+                    val priceMessage = total + " : RM ${"%.2f".format(chargingPrice)}"
+                    findViewById<TextView>(R.id.tv_price).text = priceMessage
 
-                findViewById<ImageView>(R.id.iv_cancel).setOnClickListener {
-                    handleImageViewCancelPressed()
+                    findViewById<ImageView>(R.id.iv_cancel).setOnClickListener {
+                        handleImageViewCancelPressed()
+                    }
                 }
 
-            }
-        }
-        scope.launch(Dispatchers.IO) {
-            when (val result = merchantScanDuitNow(traceNo)) {
-                is Result.Success -> handleQrCodeResult(result.value, traceNo)
-                is Result.Failure -> handleQrCodeError(result.exception)
+                paymentCheckJob = scope.launch(Dispatchers.IO) {
+                    try {
+                        when (val result = merchantScanDuitNow(traceNo)) {
+                            is Result.Success -> handleQrCodeResult(result.value, traceNo)
+                            is Result.Failure -> handleQrCodeError(result.exception)
+                        }
+                    } catch (e: CancellationException) {
+                        Log.d(TAG, "QR code generation cancelled", e)
+                    } catch (e: Exception) {
+                        handleQrCodeError(e)
+                    }
+                }
             }
         }
     }
 
     private fun handleQrCodeError(exception: Exception) {
-        val title = "QR Failed (Merchant Code: $merchantCode)"
-        val message = "Error: " + exception.localizedMessage
-        showSweetAlertDialog(title, message)
-        callback.onLoggingEverything("ERROR: handleQrCodeError: " + exception.localizedMessage)
+        weakActivity.get()?.runOnUiThread {
+            if (scope.isActive && customDialog?.isShowing == true) {
+                val title = "QR Failed (Merchant Code: $merchantCode)"
+                val message = "Error: " + exception.localizedMessage
+                showSweetAlertDialog(title, message)
+                callback.onLoggingEverything("ERROR: handleQrCodeError: " + exception.localizedMessage)
+            }
+        }
     }
 
     private fun handleRegistrationError(exception: Exception) {
-        val title = "API Failed (Merchant Code: $merchantCode)"
-        val message = "Error: " + exception.localizedMessage
-        showSweetAlertDialog(title, message)
-        callback.onLoggingEverything("ERROR: handleRegistrationError: " + exception.localizedMessage)
+        weakActivity.get()?.runOnUiThread {
+            if (scope.isActive && customDialog?.isShowing == true) {
+                val title = "API Failed (Merchant Code: $merchantCode)"
+                val message = "Error: " + exception.localizedMessage
+                showSweetAlertDialog(title, message)
+                callback.onLoggingEverything("ERROR: handleRegistrationError: " + exception.localizedMessage)
+            }
+        }
     }
 
     private fun showSweetAlertDialog(title: String, message: String) {
-        activity.runOnUiThread {
-            val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
-            sweetAlertDialog.apply {
-                setTitleText(title)
-                setContentText(message)
-                setConfirmButton("Exit") { theDialog -> theDialog?.dismissWithAnimation() }
-                if (!isShowing) {
-                    show()
+        weakActivity.get()?.runOnUiThread {
+            try {
+                val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
+                sweetAlertDialog.apply {
+                    setTitleText(title)
+                    setContentText(message)
+                    setConfirmButton("Exit") { theDialog ->
+                        theDialog?.dismissWithAnimation()
+                        dismissDialogDuitNow()
+                        callback.enableAllUiAtTypeProductActivity()
+                    }
+                    if (!isShowing) {
+                        show()
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error showing alert dialog", e)
             }
-
-            dismissDialogDuitNow()
-            callback.enableAllUiAtTypeProductActivity()
         }
     }
 
@@ -301,155 +340,175 @@ class DuitNow(
 
     private fun handleQrCodeResult(result: JSONObject, traceNo: String) {
         weakActivity.get()?.runOnUiThread {
-            try {
-                if (result.getString("Status") == "1") {
-                    Picasso.get().load(result.getString("QRCode"))
-                        .resize(300, 300)
-                        .into(customDialog?.findViewById(R.id.iv_qr_code))
-                    showQrCode()
+            if (scope.isActive && customDialog?.isShowing == true) {
+                try {
+                    if (result.getString("Status") == "1") {
+                        Picasso.get().load(result.getString("QRCode"))
+                            .resize(300, 300)
+                            .into(customDialog?.findViewById(R.id.iv_qr_code))
+                        showQrCode()
 
-                    // Start countdown timer
-                    startCountdown()
-
-                    startPaymentStatusCheck(traceNo)
-                } else {
-                    handleQrCodeError(Exception(result.optString("ErrDesc")))
+                        startCountdown()
+                        startPaymentStatusCheck(traceNo)
+                    } else {
+                        handleQrCodeError(Exception(result.optString("ErrDesc")))
+                    }
+                } catch (e: Exception) {
+                    handleQrCodeError(e)
                 }
-            } catch (e: Exception) {
-                handleQrCodeError(e)
             }
         }
     }
 
     private fun startCountdown() {
         weakActivity.get()?.runOnUiThread {
-            customDialog?.findViewById<TextView>(R.id.tv_countdown)?.visibility = View.VISIBLE
-            countdownTimer = object : CountDownTimer(COUNTDOWN_TIME, 1000) {
-                override fun onTick(millisUntilFinished: Long) {
-                    val secondsLeft = millisUntilFinished / 1000
-
-                    val countDownMessage = "Processing in ($secondsLeft sec)"
-                    customDialog?.findViewById<TextView>(R.id.tv_countdown)?.text = countDownMessage
-                }
-
-                override fun onFinish() {
-                    // Check first if the payment success,
-                    // then don't show the dialog. or logging
-                    if (!paymentAlreadyMadeAndSuccess) {
-                        logTempTransaction(0, "Transaction failed, exceed 90 seconds")
-                        showTransactionFailedDialog()
+            if (scope.isActive && customDialog?.isShowing == true) {
+                customDialog?.findViewById<TextView>(R.id.tv_countdown)?.visibility = View.VISIBLE
+                countdownTimer = object : CountDownTimer(COUNTDOWN_TIME, 1000) {
+                    override fun onTick(millisUntilFinished: Long) {
+                        val secondsLeft = millisUntilFinished / 1000
+                        val countDownMessage = "Processing in ($secondsLeft sec)"
+                        customDialog?.findViewById<TextView>(R.id.tv_countdown)?.text =
+                            countDownMessage
                     }
-                }
-            }.start()
+
+                    override fun onFinish() {
+                        if (!paymentAlreadyMadeAndSuccess) {
+                            logTempTransaction(0, "Transaction failed, exceed 90 seconds")
+                            showTransactionFailedDialog()
+                        }
+                    }
+                }.start()
+            }
         }
     }
 
     private fun showTransactionFailedDialog() {
-        activity.runOnUiThread {
-            val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
-            sweetAlertDialog.apply {
-                setTitleText(titleTransactionFailed)
-                setContentText(descriptionTransactionFailed)
-                setCancelable(false)
-                setConfirmButton("Exit") { theDialog ->
-                    theDialog?.dismissWithAnimation()
-                    dismissDialogDuitNow()
-                    callback.enableAllUiAtTypeProductActivity()
-                }
-                if (!isShowing) {
-                    show()
+        weakActivity.get()?.runOnUiThread {
+            if (scope.isActive) {
+                try {
+                    val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
+                    sweetAlertDialog.apply {
+                        setTitleText(titleTransactionFailed)
+                        setContentText(descriptionTransactionFailed)
+                        setCancelable(false)
+                        setConfirmButton("Exit") { theDialog ->
+                            theDialog?.dismissWithAnimation()
+                            dismissDialogDuitNow()
+                            callback.enableAllUiAtTypeProductActivity()
+                        }
+                        if (!isShowing) {
+                            show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error showing transaction failed dialog", e)
                 }
             }
-
         }
     }
 
     private fun handleImageViewCancelPressed() {
         weakActivity.get()?.let { activity ->
-            val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
-            sweetAlertDialog.apply {
-                setTitleText(titleTransactionCancel)
-                setContentText(descriptionTransactionCancel)
-                setCancelable(false)
-                setConfirmButton("Yes") { theDialog ->
-                    theDialog?.dismissWithAnimation()
-                    dismissDialogDuitNow()
-                    logTempTransaction(0, "Customer cancel the transaction")
-                    callback.enableAllUiAtTypeProductActivity()
-                }
-                setCancelButton("No") { theDialog ->
-                    theDialog?.dismissWithAnimation()
-                }
+            if (scope.isActive) {
+                try {
+                    val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.WARNING_TYPE)
+                    sweetAlertDialog.apply {
+                        setTitleText(titleTransactionCancel)
+                        setContentText(descriptionTransactionCancel)
+                        setCancelable(false)
+                        setConfirmButton("Yes") { theDialog ->
+                            theDialog?.dismissWithAnimation()
+                            dismissDialogDuitNow()
+                            logTempTransaction(0, "Customer cancel the transaction")
+                            callback.enableAllUiAtTypeProductActivity()
+                        }
+                        setCancelButton("No") { theDialog ->
+                            theDialog?.dismissWithAnimation()
+                        }
 
-                if (!isShowing) {
-                    show()
+                        if (!isShowing) {
+                            show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error showing cancel dialog", e)
                 }
             }
         }
     }
 
     private fun startPaymentStatusCheck(traceNo: String) {
-        scope.launch(Dispatchers.IO) {
-            repeat(45) { attempt ->  // 45 * 2 seconds = 90 seconds
-                delay(2000L) // 2 sec delay
+        paymentCheckJob?.cancel() // Cancel any existing payment check
+        paymentCheckJob = scope.launch(Dispatchers.IO) {
+            try {
+                repeat(MAX_PAYMENT_CHECKS) { attempt ->
+                    if (!isActive) return@launch // Check if coroutine is still active
 
-                when (checkTransactionStatus(traceNo)) {
-                    "1" -> {
-                        handlePaymentSuccess(traceNo)
-                        cancel()
-                    }
+                    delay(PAYMENT_CHECK_INTERVAL)
 
-                    else -> {
-                        if (attempt == 44) {
+                    when (checkTransactionStatus(traceNo)) {
+                        "1" -> {
+                            handlePaymentSuccess(traceNo)
+                            return@launch
+                        }
 
-                            // Do last checking
-                            when (checkTransactionStatus(traceNo)) {
-                                "1" -> {
-                                    handlePaymentSuccess(traceNo)
-                                    cancel()
-                                }
-
-                                else -> {
-                                    logTempTransaction(0, "Transaction failed, exceed 90 seconds")
+                        else -> {
+                            if (attempt == MAX_PAYMENT_CHECKS - 1) {
+                                // Last attempt
+                                when (checkTransactionStatus(traceNo)) {
+                                    "1" -> handlePaymentSuccess(traceNo)
+                                    else -> {
+                                        logTempTransaction(
+                                            0,
+                                            "Transaction failed, exceed 90 seconds"
+                                        )
+                                        showTransactionFailedDialog()
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            } catch (e: CancellationException) {
+                Log.d(TAG, "Payment status check cancelled", e)
+            } catch (e: Exception) {
+                handleQrCodeError(e)
             }
         }
     }
 
     private suspend fun checkTransactionStatus(traceNo: String): String? {
         return try {
-            val response = suspendCoroutine<String> { continuation ->
-                val url = "https://vendingapi.azurewebsites.net/api/ipay88/$traceNo/status"
-                val request = object : StringRequest(
-                    Method.GET, url,
-                    { response -> continuation.resume(response) },
-                    { error -> continuation.resumeWithException(error) }
-                ) {
-                    override fun getHeaders() = mapOf(
-                        "x-functions-key" to X_FUNCTION_KEY
-                    )
+            val response = withContext(Dispatchers.IO) {
+                suspendCoroutine<String> { continuation ->
+                    val url = "https://vendingapi.azurewebsites.net/api/ipay88/$traceNo/status"
+                    val request = object : StringRequest(
+                        Method.GET, url,
+                        { response -> continuation.resume(response) },
+                        { error -> continuation.resumeWithException(error) }
+                    ) {
+                        override fun getHeaders() = mapOf(
+                            "x-functions-key" to X_FUNCTION_KEY
+                        )
+                    }
+                    Volley.newRequestQueue(weakActivity.get()).add(request)
                 }
-                Volley.newRequestQueue(weakActivity.get()).add(request)
             }
             Log.d(TAG, "transaction inquiry response 1-$traceNo")
-            Log.d(
-                TAG,
-                "transaction inquiry response 2-" + JSONObject(response).optString("status")
-            )
+            Log.d(TAG, "transaction inquiry response 2-${JSONObject(response).optString("status")}")
             callback.onLoggingEverything("transaction inquiry response 1-$traceNo")
             callback.onLoggingEverything(
-                "transaction inquiry response 2-" + JSONObject(response).optString(
-                    "status"
-                )
+                "transaction inquiry response 2-${
+                    JSONObject(response).optString(
+                        "status"
+                    )
+                }"
             )
             JSONObject(response).optString("status")
         } catch (e: Exception) {
             Log.e(TAG, "checkTransactionStatus: ", e)
-            callback.onLoggingEverything("ERROR: checkTransactionStatus: " + e.localizedMessage)
+            callback.onLoggingEverything("ERROR: checkTransactionStatus: ${e.localizedMessage}")
             null
         }
     }
@@ -457,10 +516,12 @@ class DuitNow(
     private fun handlePaymentSuccess(traceNo: String) {
         paymentAlreadyMadeAndSuccess = true
         weakActivity.get()?.runOnUiThread {
-            customDialog?.dismiss()
-            updateUserTransaction(traceNo)
-            triggerDispense(traceNo)
-            logTempTransaction(1, traceNo)
+            if (scope.isActive) {
+                customDialog?.dismiss()
+                updateUserTransaction(traceNo)
+                triggerDispense(traceNo)
+                logTempTransaction(1, traceNo)
+            }
         }
     }
 
@@ -472,7 +533,7 @@ class DuitNow(
                 userObj.mtd = "${userObj.mtd} ($transId) $versionName"
             } catch (e: PackageManager.NameNotFoundException) {
                 Log.e(TAG, "Version name not found", e)
-                callback.onLoggingEverything("ERROR: updateUserTransaction: " + e.localizedMessage)
+                callback.onLoggingEverything("ERROR: updateUserTransaction: ${e.localizedMessage}")
             }
         }
     }
@@ -486,61 +547,73 @@ class DuitNow(
     private fun logTempTransaction(status: Int, refCode: String) {
         scope.launch(Dispatchers.IO) {
             try {
-                val transaction = TempTrans()
-                transaction.amount = chargingPrice
-                transaction.transDate = Calendar.getInstance().time
-                transaction.userID = userObj.getUserid()
-                transaction.franID = fid
-                transaction.machineID = mid
-                transaction.productIDs = productIds
-                transaction.paymentType = userObj.mtd
-                transaction.paymentMethod = userObj.getIpaytype()
-                transaction.paymentStatus = status
-                transaction.freePoints = ""
-                transaction.promocode = userObj.getPromname()
-                transaction.promoAmt = userObj.getPromoamt().toString()
-                transaction.vouchers = ""
-                transaction.paymentStatusDes = refCode
-                val response = suspendCoroutine { continuation ->
-                    val request = JsonObjectRequest(
-                        Request.Method.POST,
-                        "https://vendingappapi.azurewebsites.net/Api/TempTrans",
-                        JSONObject(Gson().toJson(transaction)),
-                        { response -> continuation.resume(response.toString()) },
-                        { error ->
-                            continuation.resumeWithException(error)
-                            callback.onFailedLogTempTransaction("Failed Continuation TempTran: " + error.localizedMessage)
-                            callback.onLoggingEverything("Failed Continuation TempTran: " + error.localizedMessage)
+                val transaction = TempTrans().apply {
+                    amount = chargingPrice
+                    transDate = Calendar.getInstance().time
+                    userID = userObj.getUserid()
+                    franID = fid
+                    machineID = mid
+                    productIDs = productIds
+                    paymentType = userObj.mtd
+                    paymentMethod = userObj.getIpaytype()
+                    paymentStatus = status
+                    freePoints = ""
+                    promocode = userObj.getPromname()
+                    promoAmt = userObj.getPromoamt().toString()
+                    vouchers = ""
+                    paymentStatusDes = refCode
+                }
+
+                val response = withContext(Dispatchers.IO) {
+                    suspendCoroutine { continuation ->
+                        val request = JsonObjectRequest(
+                            Request.Method.POST,
+                            "https://vendingappapi.azurewebsites.net/Api/TempTrans",
+                            JSONObject(Gson().toJson(transaction)),
+                            { response -> continuation.resume(response.toString()) },
+                            { error ->
+                                continuation.resumeWithException(error)
+                                callback.onFailedLogTempTransaction("Failed Continuation TempTran: ${error.localizedMessage}")
+                                callback.onLoggingEverything("Failed Continuation TempTran: ${error.localizedMessage}")
+                            }
+                        )
+                        requestQueue?.add(request) ?: run {
+                            Volley.newRequestQueue(weakActivity.get()).add(request)
                         }
-                    )
-                    requestQueue?.add(request) ?: run {
-                        Volley.newRequestQueue(weakActivity.get()).add(request)
                     }
                 }
                 Log.d(TAG, "Transaction logged: $response")
                 callback.onLoggingEverything("Transaction logged: $response")
+            } catch (e: CancellationException) {
+                Log.d(TAG, "Temp transaction logging cancelled", e)
             } catch (e: Exception) {
-                callback.onLoggingEverything("ERROR: Failed to log transaction: " + e.localizedMessage)
+                callback.onLoggingEverything("ERROR: Failed to log transaction: ${e.localizedMessage}")
                 Log.e(TAG, "Failed to log transaction", e)
-                callback.onFailedLogTempTransaction("Failed TempTran: " + e.localizedMessage)
+                callback.onFailedLogTempTransaction("Failed TempTran: ${e.localizedMessage}")
             }
         }
     }
 
-    /**
-     * Call this at onDestroy()
-     */
     fun dismissDialogDuitNow() {
-        countdownTimer?.cancel()
-        customDialog?.dismiss()
-        customDialog = null
-        scope.coroutineContext.cancelChildren()
+        weakActivity.get()?.runOnUiThread {
+            countdownTimer?.cancel()
+            countdownTimer = null
+            paymentCheckJob?.cancel()
+            paymentCheckJob = null
+            customDialog?.dismiss()
+            customDialog = null
+            scope.coroutineContext.cancelChildren()
+        }
     }
 
     private fun showQrCode() {
-        customDialog?.apply {
-            findViewById<ProgressBar>(R.id.progress_bar).visibility = View.GONE
-            findViewById<ImageView>(R.id.iv_qr_code).visibility = View.VISIBLE
+        weakActivity.get()?.runOnUiThread {
+            if (scope.isActive && customDialog?.isShowing == true) {
+                customDialog?.apply {
+                    findViewById<ProgressBar>(R.id.progress_bar).visibility = View.GONE
+                    findViewById<ImageView>(R.id.iv_qr_code).visibility = View.VISIBLE
+                }
+            }
         }
     }
 
@@ -549,11 +622,11 @@ class DuitNow(
     }
 
     private fun securityHmacSha512(toEncrypt: String, key: String): String {
-        val keyBytes = key.toByteArray(charset("UTF-8"))
+        val keyBytes = key.toByteArray(Charsets.UTF_8)
         val hmacSHA512 = Mac.getInstance("HmacSHA512")
         val secretKeySpec = SecretKeySpec(keyBytes, "HmacSHA512")
         hmacSHA512.init(secretKeySpec)
-        val hashBytes = hmacSHA512.doFinal(toEncrypt.toByteArray(charset("UTF-8")))
+        val hashBytes = hmacSHA512.doFinal(toEncrypt.toByteArray(Charsets.UTF_8))
         return byteArrayToHex(hashBytes)
     }
 
@@ -565,6 +638,24 @@ class DuitNow(
             hexString.append(hex)
         }
         return hexString.toString()
+    }
+
+    private fun showErrorDialog(title: String, message: String) {
+        weakActivity.get()?.runOnUiThread {
+            try {
+                val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.ERROR_TYPE)
+                sweetAlertDialog.apply {
+                    setTitleText(title)
+                    setContentText(message)
+                    setConfirmButton("OK") { dialog -> dialog?.dismissWithAnimation() }
+                    if (!isShowing) {
+                        show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error showing error dialog", e)
+            }
+        }
     }
 
     sealed class Result<out T> {
