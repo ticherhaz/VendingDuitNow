@@ -7,7 +7,6 @@ import android.os.CountDownTimer
 import android.util.Log
 import android.view.View
 import android.view.Window
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -72,6 +71,8 @@ class DuitNow(
     private val merchantKey get() = congifModel?.merchantkey ?: "3ENiVsq71P"
     private val fid get() = congifModel?.fid ?: ""
     private val mid get() = congifModel?.mid ?: ""
+
+    private var paymentAlreadyMadeAndSuccess = false
 
     companion object {
         private const val TAG = "DuitNow"
@@ -332,8 +333,12 @@ class DuitNow(
                 }
 
                 override fun onFinish() {
-                    logTempTransaction(0, "Transaction failed, exceed 90 seconds")
-                    showTransactionFailedDialog()
+                    // Check first if the payment success,
+                    // then don't show the dialog. or logging
+                    if (!paymentAlreadyMadeAndSuccess) {
+                        logTempTransaction(0, "Transaction failed, exceed 90 seconds")
+                        showTransactionFailedDialog()
+                    }
                 }
             }.start()
         }
@@ -405,7 +410,7 @@ class DuitNow(
                                 }
 
                                 else -> {
-                                    logTempTransaction(0, "Transaction failed, exceed 60 seconds")
+                                    logTempTransaction(0, "Transaction failed, exceed 90 seconds")
                                 }
                             }
                         }
@@ -450,10 +455,11 @@ class DuitNow(
     }
 
     private fun handlePaymentSuccess(traceNo: String) {
+        paymentAlreadyMadeAndSuccess = true
         weakActivity.get()?.runOnUiThread {
             customDialog?.dismiss()
             updateUserTransaction(traceNo)
-            triggerDispense()
+            triggerDispense(traceNo)
             logTempTransaction(1, traceNo)
         }
     }
@@ -471,9 +477,9 @@ class DuitNow(
         }
     }
 
-    private fun triggerDispense() {
+    private fun triggerDispense(transactionId: String) {
         weakActivity.get()?.let { activity ->
-            callback.onPrepareStartDispensePopup()
+            callback.onPrepareStartDispensePopup(transactionId)
         }
     }
 
@@ -567,7 +573,7 @@ class DuitNow(
     }
 
     interface DuitNowCallback {
-        fun onPrepareStartDispensePopup()
+        fun onPrepareStartDispensePopup(transactionId: String)
         fun enableAllUiAtTypeProductActivity()
         fun onFailedLogTempTransaction(message: String)
         fun onLoggingEverything(message: String)
