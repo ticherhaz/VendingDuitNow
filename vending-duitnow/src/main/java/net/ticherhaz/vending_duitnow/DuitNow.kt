@@ -90,12 +90,21 @@ class DuitNow(
             "https://payment.ipay88.com.my/ePayment/WebService/MHGatewayService/GatewayService.svc"
         private const val SOAP_ACTION =
             "https://www.mobile88.com/IGatewayService/EntryPageFunctionality"
+
         private const val NAMESPACE = "https://www.mobile88.com"
         private const val METHOD_NAME = "EntryPageFunctionality"
+
+        // For re-query
+        const val SOAP_URL_QUERY_PAYMENT_CHECK =
+            "https://payment.ipay88.com.my/ePayment/Webservice/TxInquiryCardDetails/TxDetailsInquiry.asmx"
+        const val SOAP_ACTION_QUERY_PAYMENT_CHECK_URL =
+            "https://www.mobile88.com/epayment/webservice/TxDetailsInquiryCardInfo"
+        const val NAMESPACE_QUERY_PAYMENT_CHECK = "https://www.mobile88.com/epayment/webservice"
+        const val METHOD_NAME_QUERY_PAYMENT_CHECK_URL = "TxDetailsInquiryCardInfo"
+
         private const val X_FUNCTION_KEY =
             "9TfFiAB2OB9MaCp2DtkrlvoigxITDupIgm-JYXYUu9e4AzFuCv3K9g== "
         private const val COUNTDOWN_TIME = 120 * 1000L // 120 seconds for countdown
-        private const val PAYMENT_CHECK_INTERVAL = 3000L // 3 seconds
     }
 
     init {
@@ -317,7 +326,7 @@ class DuitNow(
             )
             Log.d(TAG, "Query SOAP Request Params: $params")
             callback.onLoggingEverything("Query SOAP Request Params: $params")
-            val soapResponse = callWebServiceDuitNow(params)
+            val soapResponse = callWebServiceDuitNowQueryPaymentChecking(params)
             Log.d(TAG, "Query SOAP Response: $soapResponse")
             callback.onLoggingEverything("Query SOAP Response: $soapResponse")
             Result.Success(handleSoapResponseQueryPaymentChecking(soapResponse))
@@ -325,6 +334,85 @@ class DuitNow(
             Log.e(TAG, "merchantScanDuitNowQueryPaymentChecking failed", e)
             callback.onLoggingEverything("ERROR: merchantScanDuitNowQueryPaymentChecking: ${e.localizedMessage}")
             Result.Failure(e)
+        }
+    }
+
+    private suspend fun callWebServiceDuitNowQueryPaymentChecking(params: List<String>): SoapObject {
+        return withContext(Dispatchers.IO) {
+            val soapRequest = createSoapRequestQueryPaymentChecking(params)
+            val envelope = SoapSerializationEnvelope(SoapEnvelope.VER11).apply {
+                implicitTypes = true
+                dotNet = true // Required for .NET services
+                setOutputSoapObject(soapRequest)
+            }
+            HttpTransportSE(SOAP_URL_QUERY_PAYMENT_CHECK, 60000).apply {
+                call(SOAP_ACTION_QUERY_PAYMENT_CHECK_URL, envelope)
+            }
+
+            // Handle response
+            envelope.response as SoapObject
+        }
+    }
+
+    private fun createSoapRequestQueryPaymentChecking(params: List<String>): SoapObject {
+        val namespaceService =
+            NAMESPACE_QUERY_PAYMENT_CHECK // Correct namespace: "https://www.mobile88.com/epayment/webservice"
+        val methodName = METHOD_NAME_QUERY_PAYMENT_CHECK_URL // e.g., "TxDetailsInquiryCardInfo"
+
+        val soapObject = SoapObject(namespaceService, methodName)
+
+        // Helper to add properties in the correct namespace
+        fun addProperty(name: String, value: Any?) {
+            val property = PropertyInfo().apply {
+                this.name = name
+                this.value = value
+                this.namespace = namespaceService // Correct namespace
+            }
+            soapObject.addProperty(property)
+        }
+
+        // Add parameters directly to the method element
+        addProperty("MerchantCode", merchantCode)
+        addProperty("ReferenceNo", params[1]) // traceNo
+        addProperty("Amount", params[2])       // formatted amount
+        addProperty("Version", "4")
+
+        return soapObject
+    }
+
+    private fun handleSoapResponseQueryPaymentChecking(response: SoapObject): JSONObject {
+        return JSONObject().apply {
+            val status = response.getPropertySafe("Status")
+            put("Status", status)
+            if (status == "1") {
+                val merchantCode = response.getPropertySafe("MerchantCode")
+                val paymentId = response.getPropertySafe("PaymentId")
+                val traceNo = response.getPropertySafe("RefNo")
+                val authCode = response.getPropertySafe("AuthCode")
+                val transId = response.getPropertySafe("TransId")
+                put("MerchantCode", merchantCode)
+                put("PaymentId", paymentId)
+                put("RefNo", traceNo)
+                put("AuthCode", authCode)
+                put("TransId", transId)
+                if (paymentId.isEmpty()) {
+                    put("ErrDesc", "PaymentId is missing or empty")
+                    Log.e(TAG, "PaymentId is missing in query SOAP response")
+                    callback.onLoggingEverything("ERROR: PaymentId is missing in query SOAP response")
+                }
+            } else {
+                put("ErrDesc", response.getPropertySafe("ErrDesc"))
+            }
+        }
+    }
+
+    private fun SoapObject.getPropertySafe(name: String): String {
+        return try {
+            val property = getProperty(name)
+            property?.toString() ?: ""
+        } catch (e: Exception) {
+            callback.onLoggingEverything("ERROR: getPropertySafe: ${e.localizedMessage}")
+            ""
         }
     }
 
@@ -404,38 +492,6 @@ class DuitNow(
             } else {
                 put("ErrDesc", response.getPropertySafe("ErrDesc"))
             }
-        }
-    }
-
-    private fun handleSoapResponseQueryPaymentChecking(response: SoapObject): JSONObject {
-        return JSONObject().apply {
-            val status = response.getPropertySafe("Status")
-            put("Status", status)
-            if (status == "1") {
-                val authCode = response.getPropertySafe("AuthCode")
-                val transId = response.getPropertySafe("TransId")
-                val paymentId = response.getPropertySafe("paymentid")
-                put("AuthCode", authCode)
-                put("TransId", transId)
-                put("PaymentId", paymentId)
-                if (paymentId.isEmpty()) {
-                    put("ErrDesc", "PaymentId is missing or empty")
-                    Log.e(TAG, "PaymentId is missing in query SOAP response")
-                    callback.onLoggingEverything("ERROR: PaymentId is missing in query SOAP response")
-                }
-            } else {
-                put("ErrDesc", response.getPropertySafe("ErrDesc"))
-            }
-        }
-    }
-
-    private fun SoapObject.getPropertySafe(name: String): String {
-        return try {
-            val property = getProperty(name)
-            property?.toString() ?: ""
-        } catch (e: Exception) {
-            callback.onLoggingEverything("ERROR: getPropertySafe: ${e.localizedMessage}")
-            ""
         }
     }
 
