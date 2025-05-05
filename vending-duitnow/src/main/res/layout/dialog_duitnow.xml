@@ -116,7 +116,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
                         android:gravity="center"
-                        android:text="Processing in (90 sec)"
+                        android:text="Processing in (120 sec)"
                         android:textColor="@color/white"
                         android:textSize="30sp"
                         app:layout_constraintEnd_toEndOf="parent"
