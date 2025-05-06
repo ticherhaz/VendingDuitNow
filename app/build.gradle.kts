@@ -11,8 +11,8 @@ android {
         applicationId = "net.ticherhaz.vendingduitnow"
         minSdk = 21
         targetSdk = 35
-        versionCode = 119
-        versionName = "1.1.9"
+        versionCode = 120
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

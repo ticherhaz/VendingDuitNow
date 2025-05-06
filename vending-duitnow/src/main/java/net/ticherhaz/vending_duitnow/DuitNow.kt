@@ -4,7 +4,6 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.pm.PackageManager
 import android.os.CountDownTimer
-import android.util.Log
 import android.view.View
 import android.view.Window
 import android.widget.ImageView
@@ -18,6 +17,7 @@ import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
 import com.google.gson.Gson
+import com.squareup.picasso.Callback
 import com.squareup.picasso.Picasso
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -66,9 +66,9 @@ class DuitNow(
     private val callback: DuitNowCallback
 ) {
     private val weakActivity = WeakReference(activity)
-    private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
+    private val exceptionHandler = CoroutineExceptionHandler { _, e ->
         activity.runOnUiThread {
-            showErrorDialog("Coroutine Error", exception.localizedMessage ?: "Unknown error")
+            showSweetAlertDialog("Coroutine Error", e.localizedMessage ?: "Unknown error")
         }
     }
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob() + exceptionHandler)
@@ -84,7 +84,6 @@ class DuitNow(
     private var paymentCheckJob: Job? = null
 
     companion object {
-        private const val TAG = "DuitNow"
         private const val BACKEND_URL = "https://vendingapi.azurewebsites.net/api/ipay88/backend"
         private const val SOAP_URL =
             "https://payment.ipay88.com.my/ePayment/WebService/MHGatewayService/GatewayService.svc"
@@ -140,12 +139,12 @@ class DuitNow(
             val traceNo = UUID.randomUUID().toString().uppercase()
             when (val result = makeRegistrationRequest(traceNo)) {
                 is Result.Success -> showQrCodeDialog(traceNo)
-                is Result.Failure -> handleRegistrationError(result.exception)
+                is Result.Failure -> handleRegistrationError(result.errorMessage)
             }
         } catch (e: CancellationException) {
-            Log.d(TAG, "Registration coroutine cancelled", e)
+            initOnLoggingEverything("ERROR CancellationException: Registration coroutine cancelled: " + e.localizedMessage)
         } catch (e: Exception) {
-            handleRegistrationError(e)
+            handleRegistrationError(e.localizedMessage ?: "Unknown error")
         }
     }
 
@@ -175,7 +174,7 @@ class DuitNow(
             }
             Result.Success(response)
         } catch (e: Exception) {
-            Result.Failure(e)
+            Result.Failure(e.localizedMessage ?: "Unknown error")
         }
     }
 
@@ -195,40 +194,38 @@ class DuitNow(
                     try {
                         when (val result = merchantScanDuitNow(traceNo)) {
                             is Result.Success -> handleQrCodeResult(result.value, traceNo)
-                            is Result.Failure -> handleQrCodeError(result.exception)
+                            is Result.Failure -> handleQrCodeError(result.errorMessage)
                         }
                     } catch (e: CancellationException) {
-                        Log.d(TAG, "QR code generation cancelled", e)
+                        initOnLoggingEverything("ERROR CancellationException: QR code generation cancelled: " + e.localizedMessage)
                     } catch (e: Exception) {
-                        handleQrCodeError(e)
+                        handleQrCodeError(e.localizedMessage ?: "Unknown error")
                     }
                 }
             }
         }
     }
 
-    private fun handleQrCodeError(exception: Exception) {
+    private fun handleQrCodeError(exception: String) {
         weakActivity.get()?.runOnUiThread {
             if (scope.isActive && customDialog?.isShowing == true) {
-                Log.e(TAG, "QR code error", exception)
-                callback.onLoggingEverything("ERROR: handleQrCodeError: ${exception.localizedMessage}")
                 val title = "QR Failed (Merchant Code: $merchantCode)"
-                val message = "Error: ${exception.localizedMessage}"
+                val message = "Error: $exception"
                 showSweetAlertDialog(title, message)
             }
         }
+        initOnLoggingEverything("ERROR: handleQrCodeError: $exception")
     }
 
-    private fun handleRegistrationError(exception: Exception) {
+    private fun handleRegistrationError(exception: String) {
         weakActivity.get()?.runOnUiThread {
             if (scope.isActive && customDialog?.isShowing == true) {
-                Log.e(TAG, "Registration error", exception)
-                callback.onLoggingEverything("ERROR: handleRegistrationError: ${exception.localizedMessage}")
                 val title = "API Failed (Merchant Code: $merchantCode)"
-                val message = "Error: ${exception.localizedMessage}"
+                val message = "Error: $exception"
                 showSweetAlertDialog(title, message)
             }
         }
+        initOnLoggingEverything("ERROR: handleRegistrationError: $exception")
     }
 
     private fun showSweetAlertDialog(title: String, message: String) {
@@ -248,7 +245,7 @@ class DuitNow(
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error showing alert dialog", e)
+                initOnLoggingEverything("ERROR Exception: Error showing alert dialog: " + e.localizedMessage)
             }
         }
     }
@@ -258,14 +255,10 @@ class DuitNow(
             val amountFormatted = "%.2f".format(chargingPrice).replace(".", "")
             val signatureData = listOf(merchantKey, merchantCode, traceNo, amountFormatted, "MYR")
                 .joinToString("")
-            Log.d(
-                TAG,
-                "Signature Inputs: merchantKey=$merchantKey, merchantCode=$merchantCode, traceNo=$traceNo, amountFormatted=$amountFormatted"
-            )
-            callback.onLoggingEverything("Signature Inputs: merchantKey=$merchantKey, merchantCode=$merchantCode, traceNo=$traceNo, amountFormatted=$amountFormatted")
+
+            initOnLoggingEverything("Signature Inputs: merchantKey=$merchantKey, merchantCode=$merchantCode, traceNo=$traceNo, amountFormatted=$amountFormatted")
             val signature = securityHmacSha512(signatureData, merchantKey)
-            Log.d(TAG, "Generated Signature: $signature")
-            callback.onLoggingEverything("Generated Signature: $signature")
+
             val params = listOf(
                 currencyFormat(chargingPrice),
                 "", // BarcodeNo
@@ -273,47 +266,62 @@ class DuitNow(
                 signature,
                 "0"
             )
-            Log.d(TAG, "SOAP Request Params: $params")
-            callback.onLoggingEverything("SOAP Request Params: $params")
+            initOnLoggingEverything("SOAP Request Params: $params")
+
             val soapResponse = callWebServiceDuitNow(params)
-            Log.d(TAG, "SOAP Response: $soapResponse")
-            callback.onLoggingEverything("SOAP Response: $soapResponse")
+            initOnLoggingEverything("SOAP Response: $soapResponse")
+
             Result.Success(handleSoapResponse(soapResponse))
         } catch (e: Exception) {
-            Result.Failure(e)
+            Result.Failure(e.localizedMessage ?: "Unknown error")
         }
     }
 
     private suspend fun initDuitNowQueryPaymentChecking(traceNo: String): Result<Unit> {
-        Log.d(TAG, "Query payment checking started for traceNo: $traceNo")
-        callback.onLoggingEverything("Query payment checking started for traceNo: $traceNo")
+        initOnLoggingEverything("Query payment checking started for traceNo: $traceNo")
         try {
             when (val result = merchantScanDuitNowQueryPaymentChecking(traceNo)) {
                 is Result.Success -> {
-                    Log.d(TAG, "Query payment checking successful for traceNo: $traceNo")
-                    callback.onLoggingEverything("Query payment checking successful for traceNo: $traceNo")
-                    handlePaymentSuccess(traceNo)
-                    return Result.Success(Unit)
+
+                    val status = result.value.get("Status")
+                    when (status) {
+                        "6" -> {
+                            // 6 meaning is pending
+                            val message = "Status 6: Pending payment for traceNo: $traceNo"
+                            initOnLoggingEverything(message)
+                            return Result.Failure(errorMessage = message)
+                        }
+
+                        "1" -> {
+                            initOnLoggingEverything("Query payment checking successful for traceNo: $traceNo")
+                            handlePaymentSuccess(traceNo)
+                            return Result.Success(Unit)
+                        }
+
+                        "0" -> {
+                            val message = "Status 0: Failed for traceNo: $traceNo"
+                            initOnLoggingEverything(message)
+                            return Result.Failure(errorMessage = message)
+                        }
+
+                        else -> {
+                            val errDesc = result.value.get("ErrDesc")
+                            return Result.Failure(errorMessage = errDesc.toString())
+                        }
+                    }
                 }
 
                 is Result.Failure -> {
-                    Log.e(
-                        TAG,
-                        "Query payment checking failed for traceNo: $traceNo",
-                        result.exception
-                    )
-                    callback.onLoggingEverything("ERROR: Query payment checking failed: ${result.exception.localizedMessage}")
-                    return Result.Failure(result.exception)
+                    initOnLoggingEverything("ERROR: Query payment checking failed: ${result.errorMessage}")
+                    return Result.Failure(result.errorMessage)
                 }
             }
         } catch (e: CancellationException) {
-            Log.d(TAG, "Query payment checking cancelled", e)
-            callback.onLoggingEverything("ERROR: Query payment checking cancelled: ${e.localizedMessage}")
-            throw e
+            initOnLoggingEverything("ERROR: Query payment checking cancelled: ${e.localizedMessage}")
+            return Result.Failure(e.localizedMessage ?: "Unknown error")
         } catch (e: Exception) {
-            Log.e(TAG, "Query payment checking failed", e)
-            callback.onLoggingEverything("ERROR: Query payment checking failed: ${e.localizedMessage}")
-            return Result.Failure(e)
+            initOnLoggingEverything("ERROR: Query payment checking failed: ${e.localizedMessage}")
+            return Result.Failure(e.localizedMessage ?: "Unknown error")
         }
     }
 
@@ -324,16 +332,18 @@ class DuitNow(
                 traceNo,
                 currencyFormat(chargingPrice)
             )
-            Log.d(TAG, "Query SOAP Request Params: $params")
-            callback.onLoggingEverything("Query SOAP Request Params: $params")
+            initOnLoggingEverything("Query SOAP Request Params: $params")
+
             val soapResponse = callWebServiceDuitNowQueryPaymentChecking(params)
-            Log.d(TAG, "Query SOAP Response: $soapResponse")
-            callback.onLoggingEverything("Query SOAP Response: $soapResponse")
-            Result.Success(handleSoapResponseQueryPaymentChecking(soapResponse))
+            initOnLoggingEverything("Query SOAP Response: $soapResponse")
+
+            val handleTheSoap = handleSoapResponseQueryPaymentChecking(soapResponse)
+            initOnLoggingEverything("Query SOAP handleTheSoap: $handleTheSoap")
+
+            Result.Success(handleTheSoap)
         } catch (e: Exception) {
-            Log.e(TAG, "merchantScanDuitNowQueryPaymentChecking failed", e)
-            callback.onLoggingEverything("ERROR: merchantScanDuitNowQueryPaymentChecking: ${e.localizedMessage}")
-            Result.Failure(e)
+            initOnLoggingEverything("ERROR Exception: merchantScanDuitNowQueryPaymentChecking: ${e.localizedMessage}")
+            Result.Failure(e.localizedMessage ?: "Unknown error")
         }
     }
 
@@ -396,12 +406,10 @@ class DuitNow(
                 put("AuthCode", authCode)
                 put("TransId", transId)
                 if (paymentId.isEmpty()) {
-                    put("ErrDesc", "PaymentId is missing or empty")
-                    Log.e(TAG, "PaymentId is missing in query SOAP response")
-                    callback.onLoggingEverything("ERROR: PaymentId is missing in query SOAP response")
+                    initOnLoggingEverything("ERROR: PaymentId is missing in query SOAP response")
                 }
             } else {
-                put("ErrDesc", response.getPropertySafe("ErrDesc"))
+                put("ErrDesc", response.getPropertySafe("Errdesc"))
             }
         }
     }
@@ -411,7 +419,7 @@ class DuitNow(
             val property = getProperty(name)
             property?.toString() ?: ""
         } catch (e: Exception) {
-            callback.onLoggingEverything("ERROR: getPropertySafe: ${e.localizedMessage}")
+            initOnLoggingEverything("ERROR: getPropertySafe: ${e.localizedMessage}")
             ""
         }
     }
@@ -426,9 +434,9 @@ class DuitNow(
             }
             val transport = HttpTransportSE(SOAP_URL, 60000)
             transport.call(SOAP_ACTION, envelope)
+
             val response = envelope.response as SoapObject
-            Log.d(TAG, "SOAP Response: $response")
-            callback.onLoggingEverything("SOAP Response: $response")
+            initOnLoggingEverything("SOAP Response: $response")
             response
         }
     }
@@ -486,8 +494,7 @@ class DuitNow(
                 put("QRValue", qrValue)
                 if (qrCode.isEmpty()) {
                     put("ErrDesc", "QRCode is missing or empty")
-                    Log.e(TAG, "QRCode is missing in SOAP response")
-                    callback.onLoggingEverything("ERROR: QRCode is missing in SOAP response")
+                    initOnLoggingEverything("ERROR: QRCode is missing in SOAP response")
                 }
             } else {
                 put("ErrDesc", response.getPropertySafe("ErrDesc"))
@@ -502,44 +509,52 @@ class DuitNow(
                     if (result.getString("Status") == "1" && result.optString("QRCode")
                             .isNotEmpty()
                     ) {
+
                         Picasso.get().load(result.getString("QRCode"))
                             .resize(300, 300)
-                            .into(customDialog?.findViewById(R.id.iv_qr_code))
-                        showQrCode()
-                        startCountdown()
-                        startPaymentStatusCheck(traceNo)
+                            .into(customDialog?.findViewById(R.id.iv_qr_code), object : Callback {
+                                override fun onSuccess() {
+                                    initOnLoggingEverything("QRCode image loaded successfully")
+                                    showQrCode()
+                                    startPaymentStatusCheck(traceNo)
+                                }
+
+                                override fun onError(e: Exception?) {
+                                    val errorMessage =
+                                        "ERROR: Failed to load QRCode image: ${e?.localizedMessage ?: "Unknown error"}"
+                                    initOnLoggingEverything(errorMessage)
+                                    handleQrCodeError(errorMessage)
+                                }
+                            })
+
                     } else {
                         val errorMessage = result.optString("ErrDesc", "Invalid or missing QRCode")
-                        handleQrCodeError(Exception(errorMessage))
+                        handleQrCodeError(errorMessage)
                     }
                 } catch (e: Exception) {
-                    handleQrCodeError(e)
+                    handleQrCodeError(e.localizedMessage ?: "Unknown error")
                 }
             }
         }
     }
 
-    private fun startCountdown() {
-        weakActivity.get()?.runOnUiThread {
-            if (scope.isActive && customDialog?.isShowing == true) {
-                customDialog?.findViewById<TextView>(R.id.tv_countdown)?.visibility = View.VISIBLE
-                countdownTimer = object : CountDownTimer(COUNTDOWN_TIME, 1000) {
-                    override fun onTick(millisUntilFinished: Long) {
-                        val secondsLeft = millisUntilFinished / 1000
-                        val countDownMessage = "Processing in ($secondsLeft sec)"
-                        customDialog?.findViewById<TextView>(R.id.tv_countdown)?.text =
-                            countDownMessage
-                    }
-
-                    override fun onFinish() {
-                        if (!paymentAlreadyMadeAndSuccess) {
-                            logTempTransaction(0, "Transaction failed, exceeded 120 seconds")
-                            showTransactionFailedDialog()
-                        }
-                    }
-                }.start()
+    private fun startCountdown(dialog: Dialog) {
+        dialog.findViewById<TextView>(R.id.tv_countdown)?.visibility = View.VISIBLE
+        countdownTimer = object : CountDownTimer(COUNTDOWN_TIME, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val secondsLeft = millisUntilFinished / 1000
+                val countDownMessage = "Processing in ($secondsLeft sec)"
+                dialog.findViewById<TextView>(R.id.tv_countdown)?.text =
+                    countDownMessage
             }
-        }
+
+            override fun onFinish() {
+                if (!paymentAlreadyMadeAndSuccess) {
+                    logTempTransaction(0, "Transaction failed, exceeded 120 seconds")
+                    showTransactionFailedDialog()
+                }
+            }
+        }.start()
     }
 
     private fun showTransactionFailedDialog() {
@@ -561,7 +576,7 @@ class DuitNow(
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error showing transaction failed dialog", e)
+                    initOnLoggingEverything("ERROR Exception: Error showing transaction failed dialog: " + e.localizedMessage)
                 }
             }
         }
@@ -591,7 +606,7 @@ class DuitNow(
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error showing cancel dialog", e)
+                    initOnLoggingEverything("ERROR Exception: Error showing cancel dialog: " + e.localizedMessage)
                 }
             }
         }
@@ -602,31 +617,26 @@ class DuitNow(
         paymentCheckJob = scope.launch(Dispatchers.IO) {
             val startTime = System.currentTimeMillis()
             try {
-                Log.d(TAG, "Starting payment status check for traceNo: $traceNo at ${startTime}ms")
-                callback.onLoggingEverything("Starting payment status check for traceNo: $traceNo at ${startTime}ms")
+                initOnLoggingEverything("Starting payment status check for traceNo: $traceNo at ${startTime}ms")
 
                 // Step 1: Delay 7 seconds
                 delay(7000L)
                 val elapsed = (System.currentTimeMillis() - startTime) / 1000
-                Log.d(TAG, "Step 1: 7-second delay completed at ${elapsed}s")
-                callback.onLoggingEverything("Step 1: 7-second delay completed at ${elapsed}s")
+
+                initOnLoggingEverything("Step 1: 7-second delay completed at ${elapsed}s")
 
                 // Step 2: Check transaction status every 3 seconds for 10 times (7s to 37s)
                 repeat(10) { attempt ->
                     if (!isActive) {
-                        Log.d(TAG, "Coroutine cancelled during step 2, attempt $attempt")
+                        initOnLoggingEverything("Coroutine cancelled during step 2, attempt $attempt")
                         return@launch
                     }
-                    Log.d(
-                        TAG,
-                        "Step 2: Checking transaction status, attempt ${attempt + 1} at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                    )
+
+                    initOnLoggingEverything("Step 2: Checking transaction status, attempt ${attempt + 1} at ${(System.currentTimeMillis() - startTime) / 1000}s")
                     val status = checkTransactionStatus(traceNo)
                     if (status == "1") {
-                        Log.d(
-                            TAG,
-                            "Step 2: Transaction successful at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                        )
+
+                        initOnLoggingEverything("Step 2: Transaction successful at ${(System.currentTimeMillis() - startTime) / 1000}s")
                         handlePaymentSuccess(traceNo)
                         return@launch
                     }
@@ -635,38 +645,30 @@ class DuitNow(
 
                 // Step 3: Call initDuitNowQueryPaymentChecking once at 40s
                 if (!isActive) {
-                    Log.d(TAG, "Coroutine cancelled before step 3")
+                    initOnLoggingEverything("Coroutine cancelled before step 3")
                     return@launch
                 }
-                Log.d(
-                    TAG,
-                    "Step 3: Initiating query payment checking at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                )
+
+                initOnLoggingEverything("Step 3: Initiating query payment checking at ${(System.currentTimeMillis() - startTime) / 1000}s")
                 when (val result = initDuitNowQueryPaymentChecking(traceNo)) {
                     is Result.Success -> return@launch // Success already handled
-                    is Result.Failure -> Log.d(
-                        TAG,
-                        "Step 3: Query failed, continuing: ${result.exception.localizedMessage}"
-                    )
+                    is Result.Failure -> {
+                        initOnLoggingEverything("Step 3: Query failed, continuing: ${result.errorMessage}")
+                    }
                 }
                 delay(3000L) // Delay to reach ~43s
 
                 // Step 4: Check transaction status every 3 seconds for 10 times (43s to 73s)
                 repeat(10) { attempt ->
                     if (!isActive) {
-                        Log.d(TAG, "Coroutine cancelled during step 4, attempt $attempt")
+                        initOnLoggingEverything("Coroutine cancelled during step 4, attempt $attempt")
                         return@launch
                     }
-                    Log.d(
-                        TAG,
-                        "Step 4: Checking transaction status, attempt ${attempt + 1} at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                    )
+
+                    initOnLoggingEverything("Step 4: Checking transaction status, attempt ${attempt + 1} at ${(System.currentTimeMillis() - startTime) / 1000}s")
                     val status = checkTransactionStatus(traceNo)
                     if (status == "1") {
-                        Log.d(
-                            TAG,
-                            "Step 4: Transaction successful at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                        )
+                        initOnLoggingEverything("Step 4: Transaction successful at ${(System.currentTimeMillis() - startTime) / 1000}s")
                         handlePaymentSuccess(traceNo)
                         return@launch
                     }
@@ -675,38 +677,31 @@ class DuitNow(
 
                 // Step 5: Call initDuitNowQueryPaymentChecking once at 73s
                 if (!isActive) {
-                    Log.d(TAG, "Coroutine cancelled before step 5")
+                    initOnLoggingEverything("Coroutine cancelled before step 5")
                     return@launch
                 }
-                Log.d(
-                    TAG,
-                    "Step 5: Initiating query payment checking at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                )
+
+                initOnLoggingEverything("Step 5: Initiating query payment checking at ${(System.currentTimeMillis() - startTime) / 1000}s")
                 when (val result = initDuitNowQueryPaymentChecking(traceNo)) {
                     is Result.Success -> return@launch
-                    is Result.Failure -> Log.d(
-                        TAG,
-                        "Step 5: Query failed, continuing: ${result.exception.localizedMessage}"
-                    )
+                    is Result.Failure -> {
+                        initOnLoggingEverything("Step 5: Query failed, continuing: ${result.errorMessage}")
+                    }
                 }
                 delay(3000L) // Delay to reach ~76s
 
                 // Step 6: Check transaction status every 3 seconds for 5 times (76s to 91s)
                 repeat(5) { attempt ->
                     if (!isActive) {
-                        Log.d(TAG, "Coroutine cancelled during step 6, attempt $attempt")
+                        initOnLoggingEverything("Coroutine cancelled during step 6, attempt $attempt")
                         return@launch
                     }
-                    Log.d(
-                        TAG,
-                        "Step 6: Checking transaction status, attempt ${attempt + 1} at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                    )
+
+                    initOnLoggingEverything("Step 6: Checking transaction status, attempt ${attempt + 1} at ${(System.currentTimeMillis() - startTime) / 1000}s")
                     val status = checkTransactionStatus(traceNo)
                     if (status == "1") {
-                        Log.d(
-                            TAG,
-                            "Step 6: Transaction successful at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                        )
+
+                        initOnLoggingEverything("Step 6: Transaction successful at ${(System.currentTimeMillis() - startTime) / 1000}s")
                         handlePaymentSuccess(traceNo)
                         return@launch
                     }
@@ -715,38 +710,29 @@ class DuitNow(
 
                 // Step 7: Call initDuitNowQueryPaymentChecking once at 91s
                 if (!isActive) {
-                    Log.d(TAG, "Coroutine cancelled before step 7")
+                    initOnLoggingEverything("Coroutine cancelled before step 7")
                     return@launch
                 }
-                Log.d(
-                    TAG,
-                    "Step 7: Initiating query payment checking at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                )
+                initOnLoggingEverything("Step 7: Initiating query payment checking at ${(System.currentTimeMillis() - startTime) / 1000}s")
                 when (val result = initDuitNowQueryPaymentChecking(traceNo)) {
                     is Result.Success -> return@launch
-                    is Result.Failure -> Log.d(
-                        TAG,
-                        "Step 7: Query failed, continuing: ${result.exception.localizedMessage}"
-                    )
+                    is Result.Failure -> {
+                        initOnLoggingEverything("Step 7: Query failed, continuing: ${result.errorMessage}")
+                    }
                 }
                 delay(3000L) // Delay to reach ~94s
 
                 // Step 8: Check transaction status every 3 seconds for 5 times (94s to 106s)
                 repeat(5) { attempt ->
                     if (!isActive) {
-                        Log.d(TAG, "Coroutine cancelled during step 8, attempt $attempt")
+                        initOnLoggingEverything("Coroutine cancelled during step 8, attempt $attempt")
                         return@launch
                     }
-                    Log.d(
-                        TAG,
-                        "Step 8: Checking transaction status, attempt ${attempt + 1} at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                    )
+
+                    initOnLoggingEverything("Step 8: Checking transaction status, attempt ${attempt + 1} at ${(System.currentTimeMillis() - startTime) / 1000}s")
                     val status = checkTransactionStatus(traceNo)
                     if (status == "1") {
-                        Log.d(
-                            TAG,
-                            "Step 8: Transaction successful at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                        )
+                        initOnLoggingEverything("Step 8: Transaction successful at ${(System.currentTimeMillis() - startTime) / 1000}s")
                         handlePaymentSuccess(traceNo)
                         return@launch
                     }
@@ -756,52 +742,38 @@ class DuitNow(
                 // Step 9: Call initDuitNowQueryPaymentChecking 4 times at 109s, 112s, 115s, 118s
                 repeat(4) { attempt ->
                     if (!isActive) {
-                        Log.d(TAG, "Coroutine cancelled during step 9, attempt $attempt")
+                        initOnLoggingEverything("Coroutine cancelled during step 9, attempt $attempt")
                         return@launch
                     }
-                    Log.d(
-                        TAG,
-                        "Step 9: Initiating query payment checking, attempt ${attempt + 1} at ${(System.currentTimeMillis() - startTime) / 1000}s"
-                    )
+
+                    initOnLoggingEverything("Step 9: Initiating query payment checking, attempt ${attempt + 1} at ${(System.currentTimeMillis() - startTime) / 1000}s")
                     when (val result = initDuitNowQueryPaymentChecking(traceNo)) {
                         is Result.Success -> return@launch
-                        is Result.Failure -> Log.d(
-                            TAG,
-                            "Step 9: Query failed, continuing: ${result.exception.localizedMessage}"
-                        )
+                        is Result.Failure -> {
+                            initOnLoggingEverything("Step 9: Query failed, continuing: ${result.errorMessage}")
+                        }
                     }
                     delay(3000L)
                 }
 
                 // Step 10: Check if 120 seconds have passed and handle timeout
                 if (!isActive || paymentAlreadyMadeAndSuccess) {
-                    Log.d(
-                        TAG,
-                        "Exiting at ${(System.currentTimeMillis() - startTime) / 1000}s: ${if (paymentAlreadyMadeAndSuccess) "Success" else "Coroutine cancelled"}"
-                    )
+                    initOnLoggingEverything("Exiting at ${(System.currentTimeMillis() - startTime) / 1000}s: ${if (paymentAlreadyMadeAndSuccess) "Success" else "Coroutine cancelled"}")
                     return@launch
                 }
+
                 val finalTime = (System.currentTimeMillis() - startTime) / 1000
-                Log.d(TAG, "Step 10: Timeout reached at ${finalTime}s, transaction failed")
-                callback.onLoggingEverything("Step 10: Timeout reached at ${finalTime}s, transaction failed")
+                initOnLoggingEverything("Step 10: Timeout reached at ${finalTime}s, transaction failed")
+
+
                 logTempTransaction(0, "Transaction failed, exceeded 120 seconds")
                 showTransactionFailedDialog()
+
             } catch (e: CancellationException) {
-                Log.d(
-                    TAG,
-                    "Payment status check cancelled at ${(System.currentTimeMillis() - startTime) / 1000}s",
-                    e
-                )
-                callback.onLoggingEverything("Payment status check cancelled: ${e.localizedMessage}")
+                initOnLoggingEverything("ERROR CancellationException: Payment status check cancelled: ${e.localizedMessage}")
                 throw e
             } catch (e: Exception) {
-                Log.e(
-                    TAG,
-                    "Unexpected error in payment status check at ${(System.currentTimeMillis() - startTime) / 1000}s",
-                    e
-                )
-                callback.onLoggingEverything("ERROR: Unexpected error in payment status check: ${e.localizedMessage}")
-                handleQrCodeError(e)
+                handleQrCodeError(e.localizedMessage ?: "Unknown error")
             }
         }
     }
@@ -824,20 +796,19 @@ class DuitNow(
                     Volley.newRequestQueue(weakActivity.get()).add(request)
                 }
             }
-            Log.d(TAG, "transaction inquiry response 1-$traceNo")
-            Log.d(TAG, "transaction inquiry response 2-${JSONObject(response).optString("status")}")
-            callback.onLoggingEverything("transaction inquiry response 1-$traceNo")
-            callback.onLoggingEverything(
-                "transaction inquiry response 2-${
+
+            initOnLoggingEverything("Transaction inquiry response 1-$traceNo")
+            initOnLoggingEverything(
+                "Transaction inquiry response 2-${
                     JSONObject(response).optString(
                         "status"
                     )
                 }"
             )
+
             JSONObject(response).optString("status")
         } catch (e: Exception) {
-            Log.e(TAG, "checkTransactionStatus: ", e)
-            callback.onLoggingEverything("ERROR: checkTransactionStatus: ${e.localizedMessage}")
+            initOnLoggingEverything("ERROR Exception: checkTransactionStatus: ${e.localizedMessage}")
             null
         }
     }
@@ -845,6 +816,7 @@ class DuitNow(
     private fun handlePaymentSuccess(traceNo: String) {
         paymentAlreadyMadeAndSuccess = true
         paymentCheckJob?.cancel() // Cancel the payment check job
+
         weakActivity.get()?.runOnUiThread {
             if (scope.isActive) {
                 customDialog?.dismiss()
@@ -862,14 +834,13 @@ class DuitNow(
                     .getPackageInfo(activity.packageName, 0).versionName
                 userObj.mtd = "${userObj.mtd} ($transId) $versionName"
             } catch (e: PackageManager.NameNotFoundException) {
-                Log.e(TAG, "Version name not found", e)
-                callback.onLoggingEverything("ERROR: updateUserTransaction: ${e.localizedMessage}")
+                initOnLoggingEverything("ERROR NameNotFoundException: updateUserTransaction: ${e.localizedMessage}")
             }
         }
     }
 
     private fun triggerDispense(transactionId: String) {
-        weakActivity.get()?.let { activity ->
+        weakActivity.get()?.let {
             callback.onPrepareStartDispensePopup(transactionId)
         }
     }
@@ -902,9 +873,9 @@ class DuitNow(
                             JSONObject(Gson().toJson(transaction)),
                             { response -> continuation.resume(response.toString()) },
                             { error ->
+
+                                initOnLoggingEverything("ERROR: Failed Continuation TempTran: ${error.localizedMessage}")
                                 continuation.resumeWithException(error)
-                                callback.onFailedLogTempTransaction("Failed Continuation TempTran: ${error.localizedMessage}")
-                                callback.onLoggingEverything("Failed Continuation TempTran: ${error.localizedMessage}")
                             }
                         )
                         requestQueue?.add(request) ?: run {
@@ -912,21 +883,18 @@ class DuitNow(
                         }
                     }
                 }
-                Log.d(TAG, "Transaction logged: $response")
-                callback.onLoggingEverything("Transaction logged: $response")
+                initOnLoggingEverything("Transaction logged: $response")
             } catch (e: CancellationException) {
-                Log.d(TAG, "Temp transaction logging cancelled", e)
+                initOnLoggingEverything("ERROR CancellationException: Temp transaction logging cancelled: ${e.localizedMessage}")
             } catch (e: Exception) {
-                callback.onLoggingEverything("ERROR: Failed to log transaction: ${e.localizedMessage}")
-                Log.e(TAG, "Failed to log transaction", e)
-                callback.onFailedLogTempTransaction("Failed TempTran: ${e.localizedMessage}")
+                initOnLoggingEverything("ERROR Exception: Failed to log transaction: ${e.localizedMessage}")
             }
         }
     }
 
     fun dismissDialogDuitNow() {
+        initOnLoggingEverything("Dismissing dialog and cancelling payment check")
         weakActivity.get()?.runOnUiThread {
-            Log.d(TAG, "Dismissing dialog and cancelling payment check")
             countdownTimer?.cancel()
             countdownTimer = null
             paymentCheckJob?.cancel()
@@ -942,7 +910,10 @@ class DuitNow(
             if (scope.isActive && customDialog?.isShowing == true) {
                 customDialog?.apply {
                     findViewById<ProgressBar>(R.id.progress_bar).visibility = View.GONE
-                    findViewById<ImageView>(R.id.iv_qr_code).visibility = View.VISIBLE
+
+                    val ivQrCode = findViewById<ImageView>(R.id.iv_qr_code)
+                    ivQrCode.visibility = View.VISIBLE
+                    startCountdown(this)
                 }
             }
         }
@@ -971,33 +942,18 @@ class DuitNow(
         return hexString.toString()
     }
 
-    private fun showErrorDialog(title: String, message: String) {
-        weakActivity.get()?.runOnUiThread {
-            try {
-                val sweetAlertDialog = SweetAlertDialog(activity, SweetAlertDialog.ERROR_TYPE)
-                sweetAlertDialog.apply {
-                    setTitleText(title)
-                    setContentText(message)
-                    setConfirmButton("OK") { dialog -> dialog?.dismissWithAnimation() }
-                    if (!isShowing) {
-                        show()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error showing error dialog", e)
-            }
-        }
+    private fun initOnLoggingEverything(message: String) {
+        callback.onLoggingEverything(message)
     }
 
     sealed class Result<out T> {
         data class Success<out T>(val value: T) : Result<T>()
-        data class Failure(val exception: Exception) : Result<Nothing>()
+        data class Failure(val errorMessage: String = "") : Result<Nothing>()
     }
 
     interface DuitNowCallback {
         fun onPrepareStartDispensePopup(transactionId: String)
         fun enableAllUiAtTypeProductActivity()
-        fun onFailedLogTempTransaction(message: String)
         fun onLoggingEverything(message: String)
     }
 }
