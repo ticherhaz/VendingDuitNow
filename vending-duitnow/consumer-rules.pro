@@ -60,3 +60,31 @@
 -keep class junit.** { *; }
 -dontwarn org.junit.**
 -dontwarn junit.**
+# Keep all public classes and members
+-keep public class net.ticherhaz.vending_duitnow.** { *; }
+
+# Keep all interface implementations
+-keep class * implements net.ticherhaz.vending_duitnow.** { *; }
+
+# Keep all public/protected members
+-keepclassmembers class net.ticherhaz.vending_duitnow.** {
+    public *;
+    protected *;
+}
+
+# If you have any annotations that need to be preserved
+-keepattributes *Annotation*
+
+# If you use serialization (Parcelable, Serializable)
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
+
+-keepclassmembers class * implements java.io.Serializable {
+    static final long serialVersionUID;
+    private static final java.io.ObjectStreamField[] serialPersistentFields;
+    private void writeObject(java.io.ObjectOutputStream);
+    private void readObject(java.io.ObjectInputStream);
+    java.lang.Object writeReplace();
+    java.lang.Object readResolve();
+}
