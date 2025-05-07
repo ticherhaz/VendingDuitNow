@@ -1,5 +1,3 @@
-import org.gradle.kotlin.dsl.implementation
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -18,7 +16,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -44,10 +42,10 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
 
     implementation(libs.ksoap)
-    implementation ("com.android.volley:volley:1.2.1")
-    implementation ("com.squareup.picasso:picasso:2.71828")
-    implementation ("com.google.code.gson:gson:2.13.1")
+    implementation(libs.volley)
+    implementation(libs.picasso)
+    implementation(libs.gson)
 
-    implementation ("com.github.f0ris.sweetalert:library:1.6.2")
-    implementation ("com.github.ticherhaz:ComplexView:1.5.3")
+    implementation(libs.library)
+    implementation(libs.complexview)
 }

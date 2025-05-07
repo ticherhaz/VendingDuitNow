@@ -552,7 +552,7 @@ class DuitNow(
 
             override fun onFinish() {
                 if (!paymentAlreadyMadeAndSuccess) {
-                    logTempTransaction(0, "Transaction failed, exceeded 120 seconds")
+                    logTempTransaction(0, "Transaction failed, exceeded 120 seconds", 0.0)
                     showTransactionFailedDialog()
 
                     // Delay 10 seconds and then exit
@@ -603,7 +603,7 @@ class DuitNow(
                         setConfirmButton("Yes") { theDialog ->
                             theDialog?.dismissWithAnimation()
                             dismissDialogDuitNow()
-                            logTempTransaction(0, "Customer cancel the transaction")
+                            logTempTransaction(0, "Customer cancel the transaction", 0.0)
                             callback.enableAllUiAtTypeProductActivity()
                         }
                         setCancelButton("No") { theDialog ->
@@ -775,7 +775,7 @@ class DuitNow(
                 initOnLoggingEverything("Step 10: Timeout reached at ${finalTime}s, transaction failed")
 
 
-                logTempTransaction(0, "Transaction failed, exceeded 120 seconds")
+                logTempTransaction(0, "Transaction failed, exceeded 120 seconds", 0.0)
                 showTransactionFailedDialog()
 
             } catch (e: CancellationException) {
@@ -831,7 +831,7 @@ class DuitNow(
                 customDialog?.dismiss()
                 updateUserTransaction(traceNo)
                 triggerDispense(traceNo)
-                logTempTransaction(1, traceNo)
+                logTempTransaction(1, traceNo, chargingPrice)
             }
         }
     }
@@ -854,11 +854,11 @@ class DuitNow(
         }
     }
 
-    private fun logTempTransaction(status: Int, refCode: String) {
+    private fun logTempTransaction(status: Int, refCode: String, paidPrice: Double) {
         scope.launch(Dispatchers.IO) {
             try {
                 val transaction = TempTrans().apply {
-                    amount = chargingPrice
+                    amount = paidPrice
                     transDate = Calendar.getInstance().time
                     userID = userObj.getUserid()
                     franID = fid
