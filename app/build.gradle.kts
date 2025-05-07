@@ -11,8 +11,8 @@ android {
         applicationId = "net.ticherhaz.vendingduitnow"
         minSdk = 21
         targetSdk = 35
-        versionCode = 126
-        versionName = "1.2.6"
+        versionCode = 127
+        versionName = "1.2.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -20,15 +20,6 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            isDebuggable = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-        debug {
-            isMinifyEnabled = false
-            isDebuggable = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
