@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.pm.PackageManager
 import android.os.CountDownTimer
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.Window
 import android.widget.ImageView
@@ -552,6 +554,13 @@ class DuitNow(
                 if (!paymentAlreadyMadeAndSuccess) {
                     logTempTransaction(0, "Transaction failed, exceeded 120 seconds")
                     showTransactionFailedDialog()
+
+                    // Delay 10 seconds and then exit
+                    // Use the non-deprecated Handler constructor
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        dismissDialogDuitNow()
+                        callback.enableAllUiAtTypeProductActivity()
+                    }, 10000)
                 }
             }
         }.start()
