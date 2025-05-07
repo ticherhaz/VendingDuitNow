@@ -25,7 +25,7 @@
 -keepattributes Signature
 
 # Gson specific classes
--keep class sun.misc.Unsafe { *; }
+-keep class sun.misc.Unsafe.** { *; }
 -keep class com.google.gson.** { *; }
 -keep class com.google.gson.stream.** { *; }
 
