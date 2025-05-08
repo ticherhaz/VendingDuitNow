@@ -553,20 +553,26 @@ class DuitNow(
             override fun onFinish() {
                 if (!paymentAlreadyMadeAndSuccess) {
                     logTempTransaction(0, "Transaction failed, exceeded 120 seconds", 0.0)
-                    showTransactionFailedDialog()
 
                     // Delay 10 seconds and then exit
                     // Use the non-deprecated Handler constructor
-                    Handler(Looper.getMainLooper()).postDelayed({
+                    val handlerDelay10Sec = Handler(Looper.getMainLooper())
+                    val delayedRunnable = Runnable {
                         dismissDialogDuitNow()
                         callback.enableAllUiAtTypeProductActivity()
-                    }, 10000)
+                    }
+                    handlerDelay10Sec.postDelayed(delayedRunnable, 10000)
+
+                    showTransactionFailedDialog {
+                        // Cancel the delayed exit when button is clicked
+                        handlerDelay10Sec.removeCallbacks(delayedRunnable)
+                    }
                 }
             }
         }.start()
     }
 
-    private fun showTransactionFailedDialog() {
+    private fun showTransactionFailedDialog(onExitButtonClicked: () -> Unit) {
         weakActivity.get()?.runOnUiThread {
             if (scope.isActive) {
                 try {
@@ -576,6 +582,8 @@ class DuitNow(
                         setContentText(descriptionTransactionFailed)
                         setCancelable(false)
                         setConfirmButton("Exit") { theDialog ->
+                            onExitButtonClicked.invoke()
+
                             theDialog?.dismissWithAnimation()
                             dismissDialogDuitNow()
                             callback.enableAllUiAtTypeProductActivity()
