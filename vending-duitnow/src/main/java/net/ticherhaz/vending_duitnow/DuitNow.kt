@@ -774,9 +774,9 @@ class DuitNow(
                 val finalTime = (System.currentTimeMillis() - startTime) / 1000
                 initOnLoggingEverything("Step 10: Timeout reached at ${finalTime}s, transaction failed")
 
-
-                logTempTransaction(0, "Transaction failed, exceeded 120 seconds", 0.0)
-                showTransactionFailedDialog()
+                // Once finished 120 seconds,
+                // method startCountdown will trigger at the override fun onFinish() {}
+                // So need to show message here and log
 
             } catch (e: CancellationException) {
                 initOnLoggingEverything("ERROR CancellationException: Payment status check cancelled: ${e.localizedMessage}")
