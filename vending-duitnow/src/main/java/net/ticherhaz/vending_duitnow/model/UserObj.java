@@ -17,6 +17,19 @@ public class UserObj {
     public List<CongifModel> configModel;
     public int image;
     public String mtd;
+    public String position;
+
+    public boolean isIsloggedin() {
+        return isloggedin;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
+    }
 
     public int getImage() {
         return image;

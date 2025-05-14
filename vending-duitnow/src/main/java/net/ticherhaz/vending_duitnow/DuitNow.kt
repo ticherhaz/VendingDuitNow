@@ -32,7 +32,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.ticherhaz.vending_duitnow.model.CongifModel
 import net.ticherhaz.vending_duitnow.model.DuitnowModel
 import net.ticherhaz.vending_duitnow.model.TempTrans
 import net.ticherhaz.vending_duitnow.model.UserObj
@@ -54,10 +53,13 @@ import kotlin.coroutines.suspendCoroutine
 
 class DuitNow(
     private val activity: Activity,
+    private val merchantCode: String = "M22515",
+    private val merchantKey: String = "3ENiVsq71P",
+    private val franchiseId: String = "",
+    private val machineId: String = "",
     private val chargingPrice: Double,
     private val userObj: UserObj,
     private val productIds: String,
-    private var congifModel: CongifModel?,
     private val title: String,
     private val description: String,
     private val total: String,
@@ -77,10 +79,6 @@ class DuitNow(
     private var requestQueue: RequestQueue? = null
     private var customDialog: Dialog? = null
     private var countdownTimer: CountDownTimer? = null
-    private val merchantCode get() = congifModel?.merchantcode ?: "M22515"
-    private val merchantKey get() = congifModel?.merchantkey ?: "3ENiVsq71P"
-    private val fid get() = congifModel?.fid ?: ""
-    private val mid get() = congifModel?.mid ?: ""
 
     private var paymentAlreadyMadeAndSuccess = false
     private var paymentCheckJob: Job? = null
@@ -468,7 +466,7 @@ class DuitNow(
         addPropertyWithNamespace("PaymentId", 888, namespaceSchemas)
         addPropertyWithNamespace("ProdDesc", "RSKioskv2", namespaceSchemas)
         addPropertyWithNamespace("RefNo", params[2], namespaceSchemas)
-        addPropertyWithNamespace("Remark", mid, namespaceSchemas)
+        addPropertyWithNamespace("Remark", machineId, namespaceSchemas)
         addPropertyWithNamespace("Signature", params[3], namespaceSchemas)
         addPropertyWithNamespace("SignatureType", "HMACSHA512", namespaceSchemas)
         addPropertyWithNamespace("TerminalID", "", namespaceSchemas)
@@ -869,8 +867,8 @@ class DuitNow(
                     amount = paidPrice
                     transDate = Calendar.getInstance().time
                     userID = userObj.getUserid()
-                    franID = fid
-                    machineID = mid
+                    franID = franchiseId
+                    machineID = machineId
                     productIDs = productIds
                     paymentType = userObj.mtd
                     paymentMethod = userObj.getIpaytype()
