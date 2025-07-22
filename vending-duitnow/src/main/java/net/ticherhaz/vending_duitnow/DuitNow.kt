@@ -547,7 +547,7 @@ class DuitNow(
                         // --- End of Updated Screen Width Calculation ---
 
                         // Calculate 70% of screen width
-                        val qrCodeSize = (screenWidth * 0.7).toInt()
+                        val qrCodeSize = (screenWidth * 0.8).toInt()
 
                         // Set the container dimensions
                         qrCodeContainer?.layoutParams?.width = qrCodeSize

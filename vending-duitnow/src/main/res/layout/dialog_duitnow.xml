@@ -2,163 +2,149 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_centerInParent="true"
-    android:layout_marginHorizontal="16dp">
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent">
 
-    <com.blure.complexview.ComplexView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+    <!-- Main square container (70% width) -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/dialog_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:layout_centerInParent="true"
-        android:clipToPadding="false"
-        app:radius="@dimen/layout_corner_radius"
-        app:shadow="true"
-        app:shadowAlpha="38"
-        app:shadowSpread="8">
+        app:layout_constraintDimensionRatio="1:1"
+        app:layout_constraintWidth_percent="0.8">
 
-        <androidx.cardview.widget.CardView
+        <com.blure.complexview.ComplexView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="4dp"
-            android:elevation="4dp"
-            app:cardCornerRadius="@dimen/layout_corner_radius"
-            app:cardElevation="4dp"
-            app:cardMaxElevation="4dp">
+            android:layout_height="match_parent"
+            app:radius="@dimen/layout_corner_radius"
+            app:shadow="true">
 
-            <LinearLayout
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:orientation="vertical">
+                app:cardCornerRadius="@dimen/layout_corner_radius">
 
-                <!-- Header Section -->
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:id="@+id/constraintLayout5"
-                    android:layout_width="match_parent"
-                    android:layout_height="120dp"
-                    android:background="@drawable/header_curve">
-
-                    <TextView
-                        android:id="@+id/tv_title"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:layout_marginEnd="16dp"
-                        android:gravity="center"
-                        android:text="@string/proceed_with_duitnow_pay"
-                        android:textColor="#fff"
-                        android:textSize="@dimen/large_text_size"
-                        app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent" />
-                </androidx.constraintlayout.widget.ConstraintLayout>
-
-                <!-- Main Content -->
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/tv_description"
+                    <!-- Header -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/header"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
-                        android:gravity="center"
-                        android:text="@string/kindly_scan_the_qr_code_displayed_using_your_preferred_duitnow_app"
-                        android:textColor="#F44336"
-                        android:textSize="@dimen/medium_text_size" />
+                        android:layout_height="120dp"
+                        android:background="@drawable/header_curve">
 
-                    <ImageView
-                        android:id="@+id/iv"
-                        android:layout_width="80dp"
-                        android:layout_height="80dp"
-                        android:layout_gravity="center"
-                        android:layout_marginBottom="16dp"
-                        android:background="@drawable/duitnow"
-                        android:contentDescription="@string/app_name" />
+                        <TextView
+                            android:id="@+id/tv_title"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="32dp"
+                            android:gravity="center"
+                            android:text="@string/proceed_with_duitnow_pay"
+                            android:textColor="#fff"
+                            android:textSize="20sp"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
 
-                    <!-- Responsive Square QR Code Container (70% width) -->
-                    <FrameLayout
-                        android:id="@+id/qr_code_container"
-                        android:layout_width="0dp"
+                    <!-- Content -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="0dp"
-                        android:layout_gravity="center"
                         android:layout_weight="1"
-                        android:minWidth="200dp"
-                        android:minHeight="200dp">
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/tv_description"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="16dp"
+                            android:gravity="center"
+                            android:text="@string/kindly_scan_the_qr_code_displayed_using_your_preferred_duitnow_app"
+                            android:textColor="#F44336"
+                            android:textSize="16sp" />
 
                         <ImageView
-                            android:id="@+id/iv_qr_code"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:contentDescription="@string/app_name"
-                            android:scaleType="fitCenter"
-                            android:visibility="gone" />
-
-                        <ProgressBar
-                            android:id="@+id/progress_bar"
+                            android:id="@+id/iv_logo"
                             android:layout_width="80dp"
                             android:layout_height="80dp"
-                            android:layout_gravity="center"
-                            android:indeterminateTint="@color/colorPrimaryDark" />
-                    </FrameLayout>
+                            android:layout_marginBottom="16dp"
+                            android:src="@drawable/duitnow" />
+
+                        <!-- QR Code Area -->
+                        <FrameLayout
+                            android:id="@+id/qr_code_container"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1"
+                            android:minHeight="200dp">
+
+                            <ImageView
+                                android:id="@+id/iv_qr_code"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:scaleType="fitCenter"
+                                android:visibility="gone" />
+
+                            <ProgressBar
+                                android:id="@+id/progress_bar"
+                                android:layout_width="80dp"
+                                android:layout_height="80dp"
+                                android:layout_gravity="center" />
+                        </FrameLayout>
+                    </LinearLayout>
+
+                    <!-- Footer -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/footer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bottom_curve"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/tv_price"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:text="TOTAL : RM 0.00"
+                            android:textColor="#fff"
+                            android:textSize="20sp"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <TextView
+                            android:id="@+id/tv_countdown"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="Processing in (120 sec)"
+                            android:textColor="#fff"
+                            android:textSize="16sp"
+                            app:layout_constraintEnd_toStartOf="@id/iv_cancel"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@id/tv_price" />
+
+                        <ImageView
+                            android:id="@+id/iv_cancel"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:layout_marginStart="16dp"
+                            android:src="@android:drawable/ic_delete"
+                            app:layout_constraintBottom_toBottomOf="@id/tv_countdown"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="@id/tv_countdown" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
                 </LinearLayout>
-
-                <!-- Footer Section -->
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:id="@+id/constraintLayout6"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bottom_curve"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="16dp">
-
-                    <TextView
-                        android:id="@+id/tv_price"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:layout_marginTop="8dp"
-                        android:layout_marginEnd="16dp"
-                        android:layout_marginBottom="8dp"
-                        android:gravity="center"
-                        android:text="TOTAL : RM 0.00"
-                        android:textColor="#fff"
-                        android:textSize="@dimen/large_text_size"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent" />
-
-                    <TextView
-                        android:id="@+id/tv_countdown"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center"
-                        android:text="Processing in (120 sec)"
-                        android:textColor="@color/white"
-                        android:textSize="@dimen/medium_text_size"
-                        app:layout_constraintEnd_toStartOf="@+id/iv_cancel"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/tv_price" />
-
-                    <ImageView
-                        android:id="@+id/iv_cancel"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:layout_marginEnd="16dp"
-                        android:background="@drawable/circle_background"
-                        android:contentDescription="@string/cancel"
-                        android:src="@android:drawable/ic_delete"
-                        app:layout_constraintBottom_toBottomOf="@id/tv_countdown"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintTop_toTopOf="@+id/tv_countdown" />
-                </androidx.constraintlayout.widget.ConstraintLayout>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-    </com.blure.complexview.ComplexView>
+            </androidx.cardview.widget.CardView>
+        </com.blure.complexview.ComplexView>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </RelativeLayout>
