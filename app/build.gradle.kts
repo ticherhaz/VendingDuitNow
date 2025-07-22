@@ -5,14 +5,14 @@ plugins {
 
 android {
     namespace = "net.ticherhaz.vendingduitnow"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "net.ticherhaz.vendingduitnow"
         minSdk = 21
-        targetSdk = 35
-        versionCode = 134
-        versionName = "1.3.4"
+        targetSdk = 36
+        versionCode = 135
+        versionName = "1.3.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -2,12 +2,16 @@ package net.ticherhaz.vending_duitnow
 
 import android.app.Activity
 import android.app.Dialog
+import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
+import android.util.DisplayMetrics
 import android.view.View
 import android.view.Window
+import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -510,9 +514,50 @@ class DuitNow(
                             .isNotEmpty()
                     ) {
 
+                        // Get the QR code container and image view
+                        val qrCodeContainer =
+                            customDialog?.findViewById<View>(R.id.qr_code_container)
+                        val qrCodeView = customDialog?.findViewById<ImageView>(R.id.iv_qr_code)
+
+
+                        // --- Screen Width Calculation ---
+                        val screenWidth: Int
+                        val windowManager =
+                            activity.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            // For Android 11 (API 30) and above
+                            val currentWindowMetrics = windowManager.currentWindowMetrics
+                            val bounds = currentWindowMetrics.bounds
+                            // If you want the width of the area usable by your app (excluding system bars):
+                            // val windowInsets = currentWindowMetrics.windowInsets
+                            // val insets = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                            // val insetsWidth = insets.right + insets.left
+                            // screenWidth = bounds.width() - insetsWidth
+                            // For simplicity, using full bounds width here, adjust if needed for content area
+                            screenWidth = bounds.width()
+                        } else {
+                            // For older versions
+                            @Suppress("DEPRECATION")
+                            val displayMetrics = DisplayMetrics()
+                            @Suppress("DEPRECATION")
+                            activity.windowManager.defaultDisplay.getMetrics(displayMetrics)
+                            screenWidth = displayMetrics.widthPixels
+                        }
+                        // --- End of Updated Screen Width Calculation ---
+
+                        // Calculate 70% of screen width
+                        val qrCodeSize = (screenWidth * 0.7).toInt()
+
+                        // Set the container dimensions
+                        qrCodeContainer?.layoutParams?.width = qrCodeSize
+                        qrCodeContainer?.layoutParams?.height = qrCodeSize
+                        qrCodeContainer?.requestLayout()
+
                         Picasso.get().load(result.getString("QRCode"))
-                            .resize(300, 300)
-                            .into(customDialog?.findViewById(R.id.iv_qr_code), object : Callback {
+                            .resize(qrCodeSize, qrCodeSize)
+                            .centerInside()
+                            .into(qrCodeView, object : Callback {
                                 override fun onSuccess() {
                                     initOnLoggingEverything("QRCode image loaded successfully")
                                     showQrCode()

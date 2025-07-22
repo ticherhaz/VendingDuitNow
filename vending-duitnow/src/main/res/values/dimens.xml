@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Corner radii -->
     <dimen name="button_corner_radius">16dp</dimen>
     <dimen name="cardview_corner_radius">16dp</dimen>
-    <dimen name="layout_corner_radius">150dp</dimen>
+    <dimen name="layout_corner_radius">24dp</dimen>
+
+    <!-- Text sizes -->
+    <dimen name="large_text_size">20sp</dimen>
+    <dimen name="medium_text_size">16sp</dimen>
+    <dimen name="small_text_size">14sp</dimen>
+
+    <!-- Responsive sizes -->
+    <dimen name="qr_code_max_size">300dp</dimen>
+    <dimen name="qr_code_min_size">200dp</dimen>
 </resources>
