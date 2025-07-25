@@ -17,7 +17,7 @@
 
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_margin="4dp"
             android:elevation="4dp"
             app:cardCornerRadius="@dimen/layout_corner_radius"
@@ -47,7 +47,7 @@
                         android:gravity="center"
                         android:text="@string/proceed_with_duitnow_pay"
                         android:textColor="#fff"
-                        android:textSize="@dimen/large_text_size"
+                        android:textSize="@dimen/medium_text_size"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
@@ -70,15 +70,14 @@
                         android:layout_marginBottom="16dp"
                         android:gravity="center"
                         android:text="@string/kindly_scan_the_qr_code_displayed_using_your_preferred_duitnow_app"
-                        android:textColor="#F44336"
-                        android:textSize="@dimen/medium_text_size" />
+                        android:textColor="#F44336" />
 
                     <ImageView
                         android:id="@+id/iv"
-                        android:layout_width="80dp"
-                        android:layout_height="80dp"
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
                         android:layout_gravity="center"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="4dp"
                         android:background="@drawable/duitnow"
                         android:contentDescription="@string/app_name" />
 
