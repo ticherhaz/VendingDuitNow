@@ -3,7 +3,7 @@
     <!-- Corner radii -->
     <dimen name="button_corner_radius">16dp</dimen>
     <dimen name="cardview_corner_radius">16dp</dimen>
-    <dimen name="layout_corner_radius">24dp</dimen>
+    <dimen name="layout_corner_radius">16dp</dimen>
 
     <!-- Text sizes -->
     <dimen name="large_text_size">20sp</dimen>

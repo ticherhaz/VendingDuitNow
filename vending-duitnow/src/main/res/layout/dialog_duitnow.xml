@@ -34,7 +34,7 @@
                     android:id="@+id/constraintLayout5"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/header_curve"
+                    android:background="#412B3A"
                     android:paddingTop="16dp"
                     android:paddingBottom="16dp">
 
@@ -109,7 +109,7 @@
                     android:id="@+id/constraintLayout6"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bottom_curve"
+                    android:background="#412B3A"
                     android:paddingTop="4dp"
                     android:paddingBottom="16dp">
 
@@ -131,14 +131,14 @@
 
                     <TextView
                         android:id="@+id/tv_countdown"
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:gravity="center"
                         android:text="Processing in (120 sec)"
                         android:textColor="@color/white"
                         android:textSize="@dimen/medium_text_size"
-                        app:layout_constraintEnd_toStartOf="@+id/iv_cancel"
+                        app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toBottomOf="@+id/tv_price" />
 
@@ -152,6 +152,7 @@
                         android:src="@android:drawable/ic_delete"
                         app:layout_constraintBottom_toBottomOf="@id/tv_countdown"
                         app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintLeft_toRightOf="@+id/tv_countdown"
                         app:layout_constraintTop_toTopOf="@+id/tv_countdown" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </LinearLayout>
