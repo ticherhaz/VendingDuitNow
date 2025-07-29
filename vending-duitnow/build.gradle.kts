@@ -47,5 +47,4 @@ dependencies {
     implementation(libs.gson)
 
     implementation(libs.library)
-    implementation(libs.complexview)
 }

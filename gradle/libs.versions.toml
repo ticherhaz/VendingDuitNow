@@ -1,6 +1,5 @@
 [versions]
 agp = "8.11.1"
-complexview = "1.5.3"
 gson = "2.13.1"
 kotlin = "2.2.0"
 coreKtx = "1.16.0"
@@ -16,7 +15,6 @@ volley = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-complexview = { module = "com.github.ticherhaz:ComplexView", version.ref = "complexview" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
