@@ -8,9 +8,8 @@
     android:clipToPadding="false"
     android:gravity="center"
     android:theme="@style/Theme.Material3.Light.NoActionBar"
-    app:cardCornerRadius="32dp"
-    app:cardElevation="8dp"
-    app:cardMaxElevation="8dp">
+    app:strokeColor="@color/black"
+    app:strokeWidth="2dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -25,8 +24,7 @@
             android:background="#412B3A"
             android:orientation="vertical"
             android:paddingTop="16dp"
-            android:paddingBottom="16dp"
-            app:cardCornerRadius="32dp">
+            android:paddingBottom="16dp">
 
             <TextView
                 android:id="@+id/tv_title"
@@ -95,8 +93,7 @@
             android:layout_height="wrap_content"
             android:background="#412B3A"
             android:paddingTop="4dp"
-            android:paddingBottom="16dp"
-            app:cardCornerRadius="32dp">
+            android:paddingBottom="16dp">
 
             <TextView
                 android:id="@+id/tv_price"

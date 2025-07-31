@@ -127,8 +127,8 @@ class DuitNow(
 
                     // Set dialog dimensions (90% width, 50% height)
                     val displayMetrics = context.resources.displayMetrics
-                    val width = (displayMetrics.widthPixels * 0.90).toInt()
-                    val height = (displayMetrics.heightPixels * 0.80).toInt()
+                    val width = (displayMetrics.widthPixels * 0.70).toInt()
+                    val height = (displayMetrics.heightPixels * 0.70).toInt()
 
                     setLayout(width, height)
 
