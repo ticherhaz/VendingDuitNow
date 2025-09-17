@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Corner radii -->
+    <!-- Corner radius -->
     <dimen name="button_corner_radius">16dp</dimen>
     <dimen name="cardview_corner_radius">16dp</dimen>
     <dimen name="layout_corner_radius">16dp</dimen>
+
+    <!-- Corner radius main -->
+    <dimen name="layout_corner_main_radius">150dp</dimen>
 
     <!-- Text sizes -->
     <dimen name="large_text_size">20sp</dimen>

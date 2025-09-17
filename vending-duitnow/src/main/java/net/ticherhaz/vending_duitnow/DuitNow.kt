@@ -56,6 +56,7 @@ import kotlin.coroutines.suspendCoroutine
 
 class DuitNow(
     private val activity: Activity,
+    private val machineSizeType: MachineSizeType,
     private val merchantCode: String = "M22515",
     private val merchantKey: String = "3ENiVsq71P",
     private val franchiseId: String = "",
@@ -118,7 +119,12 @@ class DuitNow(
         weakActivity.get()?.let { activity ->
             customDialog = Dialog(activity).apply {
                 requestWindowFeature(Window.FEATURE_NO_TITLE)
-                setContentView(R.layout.dialog_duitnow)
+
+                if (machineSizeType == MachineSizeType.MAIN) {
+                    setContentView(R.layout.dialog_ipay88_duitnow_main)
+                } else {
+                    setContentView(R.layout.dialog_ipay88_duitnow_mini)
+                }
 
 
                 // Set transparent background and rounded corners
@@ -532,7 +538,6 @@ class DuitNow(
                     ) {
 
                         // Get the QR code container and image view
-                        customDialog?.findViewById<View>(R.id.qr_code_container)
                         val qrCodeView = customDialog?.findViewById<ImageView>(R.id.iv_qr_code)
 
 
