@@ -122,26 +122,29 @@ class DuitNow(
 
                 if (machineSizeType == MachineSizeType.MAIN) {
                     setContentView(R.layout.dialog_ipay88_duitnow_main)
+                    window?.apply {
+                        setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+                    }
+
                 } else {
                     setContentView(R.layout.dialog_ipay88_duitnow_mini)
-                }
 
+                    // Set transparent background and rounded corners
+                    window?.apply {
+                        setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
 
-                // Set transparent background and rounded corners
-                window?.apply {
-                    setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+                        // Set dialog dimensions (90% width, 50% height)
+                        val displayMetrics = context.resources.displayMetrics
+                        val width = (displayMetrics.widthPixels * 0.70).toInt()
+                        val height = (displayMetrics.heightPixels * 0.50).toInt()
 
-                    // Set dialog dimensions (90% width, 50% height)
-                    val displayMetrics = context.resources.displayMetrics
-                    val width = (displayMetrics.widthPixels * 0.70).toInt()
-                    val height = (displayMetrics.heightPixels * 0.50).toInt()
+                        setLayout(width, height)
 
-                    setLayout(width, height)
-
-                    // Set window attributes
-                    attributes = attributes.apply {
-                        dimAmount = 0.5f // Background dimming
-                        gravity = Gravity.CENTER // Position on screen
+                        // Set window attributes
+                        attributes = attributes.apply {
+                            dimAmount = 0.5f // Background dimming
+                            gravity = Gravity.CENTER // Position on screen
+                        }
                     }
                 }
 
