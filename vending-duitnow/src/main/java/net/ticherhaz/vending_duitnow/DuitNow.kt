@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.Window
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -133,12 +134,11 @@ class DuitNow(
                     window?.apply {
                         setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
 
-                        // Set dialog dimensions (90% width, 50% height)
+                        // Set dialog dimensions (85% width, wrap content height)
                         val displayMetrics = context.resources.displayMetrics
-                        val width = (displayMetrics.widthPixels * 0.70).toInt()
-                        val height = (displayMetrics.heightPixels * 0.50).toInt()
+                        val width = (displayMetrics.widthPixels * 0.85).toInt()
 
-                        setLayout(width, height)
+                        setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
 
                         // Set window attributes
                         attributes = attributes.apply {
