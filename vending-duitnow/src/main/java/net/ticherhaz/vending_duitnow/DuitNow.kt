@@ -134,9 +134,14 @@ class DuitNow(
                     window?.apply {
                         setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
 
-                        // Set dialog dimensions (85% width, wrap content height)
+                        // Set dialog dimensions
                         val displayMetrics = context.resources.displayMetrics
-                        val width = (displayMetrics.widthPixels * 0.85).toInt()
+                        val width =
+                            if (context.resources.configuration.smallestScreenWidthDp >= 600) {
+                                context.resources.getDimensionPixelSize(R.dimen.mini_dialog_width)
+                            } else {
+                                (displayMetrics.widthPixels * 0.75).toInt()
+                            }
 
                         setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
 
