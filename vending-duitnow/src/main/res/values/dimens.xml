@@ -18,7 +18,7 @@
     <dimen name="qr_code_min_size">200dp</dimen>
 
     <!-- Mini Dialog Sizes -->
-    <dimen name="mini_dialog_width">match_parent</dimen>
+    <dimen name="mini_dialog_width">600dp</dimen>
     <dimen name="mini_dialog_header_height">150dp</dimen>
     <dimen name="mini_dialog_title_text_size">50sp</dimen>
     <dimen name="mini_dialog_description_text_size">36sp</dimen>
