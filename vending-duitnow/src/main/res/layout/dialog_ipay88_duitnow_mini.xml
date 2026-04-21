@@ -114,17 +114,59 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/tv_price" />
 
-                <ImageView
-                    android:id="@+id/iv_cancel"
-                    android:layout_width="@dimen/mini_dialog_cancel_icon_size"
-                    android:layout_height="@dimen/mini_dialog_cancel_icon_size"
+                <LinearLayout
+                    android:id="@+id/ll_refresh"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="32dp"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    app:layout_constraintBottom_toBottomOf="@id/tv_countdown"
+                    app:layout_constraintRight_toLeftOf="@+id/tv_countdown"
+                    app:layout_constraintTop_toTopOf="@+id/tv_countdown">
+
+                    <ImageView
+                        android:id="@+id/iv_refresh"
+                        android:layout_width="@dimen/mini_dialog_refresh_icon_size"
+                        android:layout_height="@dimen/mini_dialog_refresh_icon_size"
+                        android:background="@drawable/circle_background"
+                        android:contentDescription="@string/refresh"
+                        android:src="@android:drawable/ic_menu_rotate" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/refresh"
+                        android:textColor="@color/white"
+                        android:textSize="20sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/ll_cancel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_marginStart="32dp"
-                    android:background="@drawable/circle_background"
-                    android:contentDescription="@string/cancel"
-                    android:src="@android:drawable/ic_delete"
+                    android:gravity="center"
+                    android:orientation="vertical"
                     app:layout_constraintBottom_toBottomOf="@id/tv_countdown"
                     app:layout_constraintLeft_toRightOf="@+id/tv_countdown"
-                    app:layout_constraintTop_toTopOf="@+id/tv_countdown" />
+                    app:layout_constraintTop_toTopOf="@+id/tv_countdown">
+
+                    <ImageView
+                        android:id="@+id/iv_cancel"
+                        android:layout_width="@dimen/mini_dialog_cancel_icon_size"
+                        android:layout_height="@dimen/mini_dialog_cancel_icon_size"
+                        android:background="@drawable/circle_background"
+                        android:contentDescription="@string/cancel"
+                        android:src="@android:drawable/ic_delete" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/cancel"
+                        android:textColor="@color/white"
+                        android:textSize="20sp" />
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tv_price"

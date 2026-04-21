@@ -220,8 +220,20 @@ class DuitNow(
                     val priceMessage = total + " : RM ${"%.2f".format(chargingPrice)}"
                     findViewById<TextView>(R.id.tv_price).text = priceMessage
 
+                    findViewById<View>(R.id.ll_cancel)?.setOnClickListener {
+                        handleImageViewCancelPressed()
+                    }
+
                     findViewById<ImageView>(R.id.iv_cancel).setOnClickListener {
                         handleImageViewCancelPressed()
+                    }
+
+                    findViewById<View>(R.id.ll_refresh)?.setOnClickListener {
+                        handleRefreshPressed()
+                    }
+
+                    findViewById<ImageView>(R.id.iv_refresh)?.setOnClickListener {
+                        handleRefreshPressed()
                     }
                 }
 
@@ -661,6 +673,29 @@ class DuitNow(
                 } catch (e: Exception) {
                     initOnLoggingEverything("ERROR Exception: Error showing cancel dialog: " + e.localizedMessage)
                 }
+            }
+        }
+    }
+
+    private fun handleRefreshPressed() {
+        initOnLoggingEverything("Refresh pressed. Restarting payment process.")
+        weakActivity.get()?.runOnUiThread {
+            if (scope.isActive && customDialog?.isShowing == true) {
+                // Cancel current tasks
+                countdownTimer?.cancel()
+                countdownTimer = null
+                paymentCheckJob?.cancel()
+                paymentCheckJob = null
+
+                // Reset UI
+                customDialog?.apply {
+                    findViewById<ProgressBar>(R.id.progress_bar).visibility = View.VISIBLE
+                    findViewById<ImageView>(R.id.iv_qr_code).visibility = View.GONE
+                    findViewById<TextView>(R.id.tv_countdown).visibility = View.GONE
+                }
+
+                // Restart process
+                scope.launch { callRegisterPayment() }
             }
         }
     }
