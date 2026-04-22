@@ -691,7 +691,7 @@ class DuitNow(
                 customDialog?.apply {
                     findViewById<ProgressBar>(R.id.progress_bar).visibility = View.VISIBLE
                     findViewById<ImageView>(R.id.iv_qr_code).visibility = View.GONE
-                    findViewById<TextView>(R.id.tv_countdown).visibility = View.GONE
+                    findViewById<TextView>(R.id.tv_countdown).visibility = View.INVISIBLE
                 }
 
                 // Restart process
