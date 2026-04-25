@@ -231,10 +231,6 @@ class DuitNow(
                     findViewById<View>(R.id.ll_refresh)?.setOnClickListener {
                         handleRefreshPressed()
                     }
-
-                    findViewById<ImageView>(R.id.iv_refresh)?.setOnClickListener {
-                        handleRefreshPressed()
-                    }
                 }
 
                 paymentCheckJob = scope.launch(Dispatchers.IO) {
