@@ -68,6 +68,7 @@
                     android:contentDescription="@string/app_name" />
 
                 <LinearLayout
+                    android:id="@+id/ll_qr_code"
                     android:layout_width="@dimen/mini_dialog_qr_container_size"
                     android:layout_height="@dimen/mini_dialog_qr_container_size"
                     android:layout_gravity="center"
@@ -91,6 +92,34 @@
                         android:layout_gravity="center"
                         android:indeterminateTint="@color/colorPrimaryDark" />
                 </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/have_problem_with_qr_code"
+                        android:textColor="@color/black"
+                        android:textSize="22sp" />
+
+                    <TextView
+                        android:id="@+id/ll_refresh"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:text="@string/tap_here_to_refresh_new_qr_code"
+                        android:textColor="@color/button_color_states_red"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </LinearLayout>
 
             <androidx.constraintlayout.widget.ConstraintLayout
@@ -113,33 +142,6 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/tv_price" />
-
-                <LinearLayout
-                    android:id="@+id/ll_refresh"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="32dp"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    app:layout_constraintBottom_toBottomOf="@id/tv_countdown"
-                    app:layout_constraintRight_toLeftOf="@+id/tv_countdown"
-                    app:layout_constraintTop_toTopOf="@+id/tv_countdown">
-
-                    <ImageView
-                        android:id="@+id/iv_refresh"
-                        android:layout_width="@dimen/mini_dialog_refresh_icon_size"
-                        android:layout_height="@dimen/mini_dialog_refresh_icon_size"
-                        android:background="@drawable/circle_background"
-                        android:contentDescription="@string/refresh"
-                        android:src="@android:drawable/ic_menu_rotate" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/refresh"
-                        android:textColor="@color/white"
-                        android:textSize="20sp" />
-                </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/ll_cancel"
