@@ -158,6 +158,7 @@ class DuitNow(
 
                 findViewById<ProgressBar>(R.id.progress_bar).visibility = View.VISIBLE
                 findViewById<ImageView>(R.id.iv_qr_code).visibility = View.GONE
+                findViewById<View>(R.id.ll_refresh)?.visibility = View.GONE
 
                 findViewById<TextView>(R.id.tv_title).text = title
                 findViewById<TextView>(R.id.tv_description).text = description
@@ -674,6 +675,11 @@ class DuitNow(
     }
 
     private fun handleRefreshPressed() {
+        if (paymentAlreadyMadeAndSuccess) {
+            initOnLoggingEverything("Refresh ignored: payment already successful.")
+            return
+        }
+
         initOnLoggingEverything("Refresh pressed. Restarting payment process.")
         weakActivity.get()?.runOnUiThread {
             if (scope.isActive && customDialog?.isShowing == true) {
@@ -688,6 +694,7 @@ class DuitNow(
                     findViewById<ProgressBar>(R.id.progress_bar).visibility = View.VISIBLE
                     findViewById<ImageView>(R.id.iv_qr_code).visibility = View.GONE
                     findViewById<TextView>(R.id.tv_countdown).visibility = View.INVISIBLE
+                    findViewById<View>(R.id.ll_refresh)?.visibility = View.GONE
                 }
 
                 // Restart process
@@ -997,6 +1004,7 @@ class DuitNow(
 
                     val ivQrCode = findViewById<ImageView>(R.id.iv_qr_code)
                     ivQrCode.visibility = View.VISIBLE
+                    findViewById<View>(R.id.ll_refresh)?.visibility = View.VISIBLE
                     startCountdown(this)
                 }
             }

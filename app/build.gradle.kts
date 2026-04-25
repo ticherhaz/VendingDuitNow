@@ -13,8 +13,8 @@ configure<ApplicationExtension> {
         applicationId = "net.ticherhaz.vendingduitnow"
         minSdk = 21
         targetSdk = 36
-        versionCode = 164
-        versionName = "1.6.4"
+        versionCode = 165
+        versionName = "1.6.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
